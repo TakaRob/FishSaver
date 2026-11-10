@@ -1,0 +1,2239 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Magikarp Jump Aquarium | Restorative Ecosystem</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    body,
+    html {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #03080e;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      color: #e0f2fe;
+    }
+
+    canvas#aquarium {
+      display: block;
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      cursor: pointer;
+    }
+
+    /* Soft Fascination HUD Overlay (Auto-hiding during inactivity) */
+    #hud-overlay {
+      position: absolute;
+      top: 16px;
+      left: 18px;
+      right: 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      pointer-events: none;
+      z-index: 10;
+      opacity: 1;
+      transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    #hud-overlay.idle-hidden {
+      opacity: 0;
+      transform: translateY(-8px);
+      pointer-events: none;
+    }
+
+    .hud-card {
+      pointer-events: auto;
+      background: rgba(5, 12, 20, 0.76);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(251, 191, 36, 0.22);
+      border-radius: 14px;
+      padding: 10px 18px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .title-group {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .title-main {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      color: #f1f5f9;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .title-badge {
+      background: rgba(251, 191, 36, 0.16);
+      border: 1px solid rgba(251, 191, 36, 0.45);
+      color: #fcd34d;
+      font-size: 9px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 20px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .status-badge {
+      font-size: 9px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 12px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .status-balanced {
+      background: rgba(52, 211, 153, 0.14);
+      color: #34d399;
+      border: 1px solid rgba(52, 211, 153, 0.3);
+    }
+
+    .status-grazing {
+      background: rgba(251, 191, 36, 0.14);
+      color: #fbbf24;
+      border: 1px solid rgba(251, 191, 36, 0.3);
+    }
+
+    .status-sparse {
+      background: rgba(248, 113, 113, 0.14);
+      color: #f87171;
+      border: 1px solid rgba(248, 113, 113, 0.3);
+    }
+
+    .title-sub {
+      font-size: 10px;
+      color: #94a3b8;
+      letter-spacing: 0.03em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Biomass Meters */
+    .meters-col {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .meter-box {
+      display: flex;
+      flex-direction: column;
+      width: 72px;
+      gap: 3px;
+    }
+
+    .meter-header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 9px;
+      color: #94a3b8;
+      text-transform: uppercase;
+    }
+
+    .meter-bar-bg {
+      width: 100%;
+      height: 4px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .meter-bar-fill {
+      height: 100%;
+      width: 50%;
+      transition: width 0.3s ease;
+    }
+
+    /* Metrics Row */
+    .metrics-row {
+      display: flex;
+      gap: 14px;
+      align-items: center;
+    }
+
+    .metric-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-width: 48px;
+    }
+
+    .metric-val {
+      font-size: 13px;
+      font-weight: 700;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      color: #5eead4;
+    }
+
+    .metric-lbl {
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #64748b;
+      margin-top: 1px;
+    }
+
+    .metric-divider {
+      width: 1px;
+      height: 22px;
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    /* Right-side Controls */
+    .controls-card {
+      pointer-events: auto;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-soft {
+      background: rgba(15, 23, 42, 0.65);
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      color: #cbd5e1;
+      padding: 7px 13px;
+      border-radius: 9px;
+      font-size: 11px;
+      font-weight: 500;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      letter-spacing: 0.02em;
+      transition: all 0.25s ease;
+    }
+
+    .btn-soft:hover {
+      background: rgba(30, 41, 59, 0.85);
+      border-color: rgba(94, 234, 212, 0.45);
+      color: #5eead4;
+      transform: translateY(-1px);
+    }
+
+    .btn-soft.active {
+      background: rgba(13, 148, 136, 0.25);
+      border-color: rgba(45, 212, 191, 0.6);
+      color: #5eead4;
+    }
+
+    .champion-btn {
+      background: linear-gradient(135deg, rgba(245, 158, 11, 0.22), rgba(217, 119, 6, 0.16));
+      border: 1px solid rgba(251, 191, 36, 0.45);
+      color: #fcd34d;
+      padding: 7px 13px;
+      border-radius: 9px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      letter-spacing: 0.02em;
+      transition: all 0.25s ease;
+    }
+
+    .champion-btn:hover {
+      background: linear-gradient(135deg, rgba(245, 158, 11, 0.35), rgba(217, 119, 6, 0.28));
+      border-color: rgba(251, 191, 36, 0.7);
+      color: #ffffff;
+      transform: translateY(-1px);
+      box-shadow: 0 0 14px rgba(245, 158, 11, 0.3);
+    }
+
+    #bottom-hint {
+      position: absolute;
+      bottom: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 10px;
+      color: rgba(148, 163, 184, 0.42);
+      letter-spacing: 0.06em;
+      pointer-events: none;
+      z-index: 5;
+      transition: opacity 0.8s ease;
+    }
+
+    #bottom-hint.idle-hidden {
+      opacity: 0;
+    }
+  </style>
+</head>
+
+<body>
+
+  <canvas id="aquarium"></canvas>
+
+  <!-- Top Soft Fascination Telemetry HUD -->
+  <div id="hud-overlay">
+    <div class="hud-card">
+      <div class="title-group">
+        <div class="title-main">
+          <span>Magikarp Aquarium</span>
+          <span class="title-badge">Tri-Trait Evolved</span>
+        </div>
+        <div class="title-sub">
+          <span>Serene Homeostasis</span>
+          <span class="status-badge status-balanced" id="eco-status">Balanced Waters</span>
+        </div>
+      </div>
+
+      <div class="metric-divider"></div>
+
+      <div class="meters-col">
+        <div class="meter-box">
+          <div class="meter-header">
+            <span>🌿 Flora</span>
+            <span id="metric-biomass-pct" style="color: #34d399; font-weight:600;">72%</span>
+          </div>
+          <div class="meter-bar-bg">
+            <div class="meter-bar-fill" id="metric-biomass-bar"
+              style="background: linear-gradient(90deg, #f59e0b, #10b981);"></div>
+          </div>
+        </div>
+        <div class="meter-box">
+          <div class="meter-header">
+            <span>🔬 Biofilm</span>
+            <span id="metric-algae-pct" style="color: #5eead4; font-weight:600;">18%</span>
+          </div>
+          <div class="meter-bar-bg">
+            <div class="meter-bar-fill" id="metric-algae-bar"
+              style="background: linear-gradient(90deg, #0d9488, #2dd4bf);"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="metric-divider"></div>
+
+      <div class="metrics-row">
+        <div class="metric-item">
+          <span class="metric-val" id="metric-pop">3</span>
+          <span class="metric-lbl">Magikarp (~5 Cap)</span>
+        </div>
+        <div class="metric-divider"></div>
+        <div class="metric-item">
+          <span class="metric-val" id="metric-gen">Gen 1</span>
+          <span class="metric-lbl">Lineage</span>
+        </div>
+        <div class="metric-divider"></div>
+        <div class="metric-item">
+          <span class="metric-val" id="metric-fps" style="color: #99f6e4;">60</span>
+          <span class="metric-lbl">FPS</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="hud-card controls-card">
+      <button class="btn-soft" id="btn-audio" title="Toggle gentle hydroacoustic soundscape">
+        <span id="audio-icon">🔈</span>
+        <span id="audio-label">Ambient Audio</span>
+      </button>
+      <button class="champion-btn" id="btn-spawn-champion" title="Spawn saved highest generation fish into aquarium">
+        👑 Spawn Champion (<span id="spawn-btn-gen">Gen 1</span>)
+      </button>
+    </div>
+  </div>
+
+  <div id="bottom-hint">Tap water to ripple · Move mouse to reveal controls</div>
+
+  <script>
+    // =========================================================================
+    // Official Magikarp Articulated SVG Parts & Kinematic Pivots
+    // =========================================================================
+    const MAGIKARP_SVG_PARTS = { "crown": [["#f8f397", "M162.25 71.45 Q149.7 84.15 141.75 89.2 137.75 85.55 130.55 81.3 116.1 72.75 99.95 69.6 99.7 68.55 98.7 66.95 96.7 63.85 92.9 61.4 91.5 29.55 91.75 25.1 92.0 21.0 92.85 20.1 94.15 18.9 97.25 22.6 100.1 26.05 105.2 35.35 L109.75 44.0 Q118.5 32.6 129.95 20.0 141.65 7.2 147.0 3.15 149.9 0.95 150.2 0.9 151.9 0.65 152.05 5.5 152.35 13.05 148.15 54.2 L164.35 52.85 172.3 52.75 Q175.5 52.75 176.2 53.7 177.0 54.85 174.9 57.6 171.8 61.7 162.25 71.45"], ["#0d131a", "M91.1 22.75 Q91.3 19.9 93.15 19.35 95.1 18.75 97.0 21.15 99.25 23.95 103.7 31.15 109.1 39.8 112.8 47.15 114.45 50.4 113.5 50.9 112.55 51.4 111.0 48.25 107.2 40.7 102.05 32.1 97.55 24.55 95.5 21.95 92.95 18.8 92.7 22.8 92.45 26.6 92.85 39.0 93.25 52.8 94.15 61.8 L93.0 61.65 Q91.85 61.2 91.85 61.0 91.0 52.25 90.9 38.5 90.8 27.1 91.1 22.75"], ["#0d131a", "M147.9 1.2 Q149.9 -0.45 151.2 0.2 152.45 0.75 152.55 2.8 152.95 8.25 151.55 28.9 150.1 50.25 148.6 59.05 148.0 62.4 147.0 62.55 146.0 62.7 146.45 59.5 147.8 50.55 149.5 30.3 151.3 8.65 150.9 3.0 150.7 0.9 149.2 2.15 141.75 8.25 130.2 21.2 118.65 34.1 110.7 45.15 110.5 45.35 109.9 44.35 109.3 43.35 109.45 43.1 117.3 32.2 128.9 19.65 139.95 7.7 147.9 1.2"], ["#0d131a", "M173.85 52.0 Q176.55 52.2 177.1 53.7 177.7 55.35 175.6 58.05 169.0 66.7 159.25 76.05 149.85 85.05 142.55 89.95 L141.6 89.25 Q140.8 88.5 141.0 88.35 148.25 83.35 157.55 74.7 167.9 65.05 174.3 56.7 175.75 54.8 175.6 54.35 175.5 53.95 173.75 53.8 169.2 53.45 163.1 53.85 L148.15 55.25 Q147.85 55.25 147.75 54.2 147.7 53.15 147.95 53.1 163.7 51.3 173.85 52.0"]], "frontWhisker": [["#f8f397", "M13.4 160.2 Q8.3 164.45 12.05 187.0 14.1 199.15 18.95 219.2 22.2 234.85 19.15 246.25 16.45 256.25 9.15 262.25 5.85 265.0 5.25 263.5 4.65 262.0 7.3 258.65 13.55 250.8 14.8 241.2 15.95 232.35 13.0 219.6 7.85 198.85 6.0 189.9 3.0 175.05 4.1 166.3 4.7 161.5 6.35 157.85 7.6 155.1 9.8 152.25 L13.4 160.2"], ["#0d131a", "M9.05 151.15 Q9.25 150.95 9.55 152.05 L9.75 153.4 Q5.75 158.7 4.8 166.35 3.7 174.75 6.65 189.4 L13.85 219.7 Q17.1 233.65 15.55 242.75 14.1 251.25 7.8 259.1 5.5 262.0 5.9 262.9 6.25 263.8 8.75 261.75 15.35 256.3 18.1 247.5 21.7 235.9 18.3 219.35 12.85 197.15 11.75 190.65 7.15 164.5 12.95 159.65 13.2 159.5 13.85 160.25 14.45 160.95 14.25 161.15 9.2 165.4 13.65 190.65 14.4 195.05 20.05 219.3 23.75 237.0 19.65 248.8 16.75 257.15 9.6 263.0 5.85 266.1 4.7 264.1 3.5 262.05 6.55 258.25 12.65 250.65 13.85 241.0 15.0 232.1 12.1 219.75 L5.9 195.4 Q1.4 175.1 2.55 166.2 3.2 161.25 5.2 157.1 6.65 154.2 9.05 151.15"]], "tail": [["BODY", "M179.0 150.6 Q194.5 137.0 217.15 129.7 236.45 123.5 252.1 124.1 260.35 124.45 260.15 126.3 260.0 128.1 252.75 128.35 243.9 128.65 233.2 131.35 Q220.9 134.45 210.25 139.9 182.9 153.85 176.65 177.4 171.75 195.75 176.65 216.2 180.9 233.95 190.85 248.05 193.0 251.2 191.65 252.6 190.2 254.1 186.35 250.55 176.75 241.65 170.05 223.8 163.2 205.6 163.85 189.9 Q164.0 170.0 179.0 150.6 Z"], ["DARK", "M171.65 167.45 Q178.7 164.7 179.35 165.05 180.6 165.75 177.65 173.85 171.5 190.55 174.95 209.75 178.3 228.3 190.2 247.3 193.55 252.55 191.3 252.9 189.15 253.2 185.3 249.15 178.2 241.55 173.35 231.85 164.1 213.25 163.85 189.6 Q165.0 178.0 171.65 167.45 Z"], ["#ffffff", "M217.9 188.25 Q214.35 193.65 213.6 204.4 212.7 216.9 211.35 220.55 209.45 225.75 201.85 233.3 L192.9 242.25 Q191.35 244.5 190.75 246.5 190.45 247.45 190.45 248.0 178.95 231.65 175.15 209.9 171.25 187.2 178.3 171.55 188.0 150.0 214.6 138.05 235.35 128.75 256.1 128.4 L253.6 130.1 Q250.85 132.35 249.65 134.95 247.2 140.15 245.35 148.8 243.6 156.75 241.1 161.35 236.85 169.1 230.4 174.45 223.0 180.55 217.9 188.25"], ["#dbdcdc", "M174.8 184.55 Q179.45 155.6 209.55 140.4 230.4 129.9 256.25 128.25 252.55 129.8 249.25 137.1 247.6 140.75 246.7 144.05 224.8 144.6 206.2 153.25 182.8 164.15 174.8 184.55"], ["#0d131a", "M162.8 190.55 Q162.8 190.3 163.8 189.6 164.8 188.9 164.8 189.2 164.1 205.55 171.5 224.5 178.6 242.55 187.75 250.35 190.4 252.6 191.15 251.95 191.9 251.3 190.15 248.75 178.9 232.2 174.85 212.5 169.95 188.75 178.15 169.2 184.75 153.5 205.65 141.6 227.8 129.0 254.8 127.5 259.3 127.25 259.4 126.35 259.55 125.45 255.2 125.2 234.85 124.1 214.05 131.5 193.5 138.8 179.3 151.95 179.1 152.15 178.95 150.9 178.8 149.65 178.95 149.55 193.25 136.6 214.0 129.55 234.7 122.55 255.3 123.6 261.7 123.95 261.05 126.5 260.4 129.0 254.9 129.3 227.55 130.85 205.9 143.5 186.3 154.95 180.1 169.7 172.0 189.0 176.65 212.35 180.5 231.85 191.5 248.0 194.05 251.75 192.05 253.1 190.1 254.5 186.4 251.35 177.15 243.45 169.95 225.75 162.35 207.0 162.8 190.55"], ["#0d131a", "M240.3 165.35 Q237.7 169.4 229.45 176.45 222.05 182.75 218.6 189.15 214.8 196.15 214.3 205.7 213.65 218.45 211.2 223.45 209.0 227.95 199.75 236.65 195.65 240.5 193.85 242.85 191.25 246.25 191.4 248.9 191.4 249.2 190.6 248.1 189.8 247.05 189.85 246.75 190.1 243.55 192.55 240.85 L198.6 235.4 Q206.7 228.05 209.45 222.2 212.2 216.4 212.75 205.65 213.3 195.15 216.3 189.1 219.45 182.8 228.1 175.4 235.5 169.1 239.45 162.25 242.9 156.2 245.05 147.05 247.05 138.35 248.6 135.25 250.9 130.5 255.7 128.1 L257.85 127.95 259.25 128.15 Q254.05 129.85 250.8 135.75 248.35 140.1 246.6 147.8 243.8 159.9 240.3 165.35"], ["#0d131a", "M181.45 165.25 Q181.2 165.4 181.5 164.3 181.8 163.15 182.15 162.95 192.05 157.05 211.85 156.0 228.0 155.1 242.7 157.4 243.0 157.45 242.9 158.1 242.8 158.8 242.5 158.75 229.5 156.7 211.3 157.95 189.6 159.4 181.45 165.25"], ["#0d131a", "M175.35 180.3 Q175.3 179.95 175.9 179.1 176.5 178.3 176.55 178.6 178.95 190.05 190.45 206.0 200.25 219.65 208.35 226.15 208.6 226.3 208.15 226.85 L207.5 227.2 Q198.2 219.7 189.55 208.2 178.65 193.65 175.35 180.3"]], "pectoral": [["BODY", "M163.35 135.1 L137.5 134.2 107.75 132.0 Q106.3 132.1 103.55 133.15 98.05 135.25 91.6 139.95 83.1 146.2 80.65 148.75 77.4 152.15 77.2 155.95 L70.55 155.15 70.6 150.95 Q70.8 146.55 71.6 145.5 72.95 143.8 85.15 135.3 97.95 126.3 100.6 126.05 L166.5 130.15 170.6 130.55 Q172.45 130.95 172.45 132.0 172.45 133.05 168.65 134.05 L163.35 135.1"], ["#ffffff", "M77.3 152.9 Q79.05 149.25 89.7 141.3 101.3 132.65 107.2 132.15 L123.85 133.4 160.3 135.2 Q157.1 136.4 151.7 139.5 143.65 144.15 137.35 149.9 118.1 167.35 121.1 188.5 121.7 192.85 121.1 193.15 120.75 193.3 118.2 191.45 78.05 161.5 77.3 159.65 76.8 158.45 77.0 155.55 L77.3 152.9"], ["#dbdcdc", "M77.3 159.8 Q76.65 158.8 76.75 156.2 76.85 153.4 77.95 152.2 86.3 142.8 96.15 136.75 104.25 131.75 107.55 131.95 L130.8 134.1 158.95 135.3 151.15 139.0 Q127.05 138.2 108.2 142.15 99.65 143.9 91.3 149.55 80.15 157.05 84.1 164.85 78.1 161.0 77.3 159.8"], ["#0d131a", "M79.0 151.8 Q77.75 153.6 77.75 156.7 77.75 159.3 78.5 159.9 L84.7 164.6 Q109.65 183.35 118.8 190.95 120.5 192.35 120.7 191.95 L120.3 189.3 Q116.65 171.05 131.55 154.15 142.85 141.4 156.9 135.75 L128.45 134.65 108.55 132.95 Q103.1 132.25 91.05 141.3 81.15 148.7 79.0 151.8 M166.25 129.3 Q173.45 129.65 173.7 131.7 173.9 133.7 167.3 135.05 L160.85 135.9 Q144.4 142.3 132.8 156.25 118.95 172.9 122.35 190.65 122.9 193.4 122.0 193.95 121.0 194.55 117.95 192.25 L77.7 161.45 Q76.35 160.4 76.15 156.85 75.95 153.15 77.45 151.0 80.7 146.4 91.55 138.65 103.8 130.0 108.8 130.95 114.7 132.05 136.3 133.35 160.7 134.85 167.05 133.5 171.85 132.5 171.65 131.7 171.45 130.85 166.2 130.85 L128.55 128.45 100.15 126.95 Q96.8 127.95 84.85 136.45 73.5 144.5 72.55 145.85 71.95 146.75 71.75 148.75 L71.35 153.0 Q71.0 155.85 70.35 155.3 69.75 154.8 69.95 151.7 L70.25 147.5 Q70.4 145.1 70.8 144.6 71.65 143.4 83.5 135.05 96.2 126.0 99.75 124.95 L121.25 125.9 166.25 129.3"], ["#0d131a", "M77.1 158.6 Q76.85 158.55 76.9 157.9 77.0 157.25 77.25 157.25 86.4 158.15 93.6 160.2 101.65 162.45 109.65 166.7 112.9 168.4 112.9 169.05 112.9 169.7 109.7 168.25 101.15 164.25 93.0 162.0 86.7 160.2 77.1 158.6"], ["#0d131a", "M77.15 155.7 Q76.9 155.85 76.9 155.1 76.85 154.35 77.1 154.2 87.65 147.5 104.35 144.5 122.35 141.3 145.55 142.75 145.85 142.75 145.0 143.35 L143.85 143.9 Q121.1 143.3 104.05 146.35 87.2 149.35 77.15 155.7"]], "mainWhisker": [["#f8f397", "M42.75 134.5 Q45.65 135.45 50.95 141.35 56.85 147.9 59.2 153.95 63.15 164.35 62.0 185.65 61.35 197.9 61.35 202.6 61.4 212.35 63.15 220.0 69.75 249.0 87.2 265.7 97.6 275.7 110.9 280.35 114.0 281.45 114.45 282.6 114.95 283.8 112.0 283.8 105.5 283.8 97.7 280.0 89.2 275.95 81.5 268.45 62.65 250.25 56.0 220.7 53.5 209.55 54.5 190.8 55.6 171.15 54.3 163.9 52.9 156.05 47.45 149.3 44.0 145.1 39.7 142.05 37.1 140.2 38.5 136.85 39.95 133.55 42.75 134.5"], ["#0d131a", "M50.35 141.7 Q45.2 136.0 42.55 135.15 40.25 134.4 39.1 137.2 37.95 140.0 40.1 141.5 44.65 144.7 48.15 149.05 53.55 155.85 54.95 163.8 55.85 168.85 55.85 175.55 L55.35 188.05 Q54.75 198.5 54.85 204.0 55.0 213.1 56.65 220.55 63.25 249.85 81.7 267.85 89.3 275.3 97.7 279.35 105.45 283.15 112.0 283.15 113.65 283.15 113.25 282.45 112.9 281.8 110.7 281.0 95.8 275.75 84.4 264.2 67.75 247.35 62.25 220.15 60.2 210.1 60.7 195.65 61.7 180.55 61.7 174.65 61.7 162.55 58.55 154.2 56.25 148.15 50.35 141.7 M42.75 133.4 Q46.1 134.5 51.7 140.35 58.2 147.1 60.5 153.75 63.6 162.8 63.7 171.05 L62.75 187.9 Q62.2 198.5 62.3 203.75 62.4 212.7 64.05 219.85 70.15 246.75 86.55 263.4 97.25 274.3 111.15 279.75 114.45 281.05 114.75 282.85 115.1 284.7 112.0 284.7 105.35 284.7 97.55 281.2 88.85 277.3 81.0 270.05 61.65 252.1 54.65 221.05 53.0 213.65 53.0 204.2 L53.75 187.95 Q54.2 180.35 54.15 175.6 54.05 169.1 53.15 164.0 51.95 157.35 47.8 151.5 44.25 146.5 39.35 143.05 36.25 140.9 37.9 136.6 39.55 132.35 42.75 133.4"]], "body": [["BODY", "M163.85 189.9 Q142.35 204.25 114.3 206.1 91.65 207.6 70.15 201.0 L67.25 201.2 65.95 201.1 Q43.25 197.1 25.55 178.0 6.55 157.5 4.3 130.15 14.35 134.5 20.8 132.9 26.5 131.4 27.45 126.0 28.05 122.45 26.4 119.6 25.05 117.25 23.0 116.45 16.65 113.95 11.95 111.7 10.55 110.95 10.45 109.7 10.3 108.6 11.15 107.45 18.5 90.4 37.85 79.4 57.65 68.15 81.25 68.5 82.25 65.25 84.95 62.85 87.65 60.5 90.0 60.65 93.9 60.9 97.3 65.3 99.05 67.45 99.95 69.6 127.25 74.25 148.9 94.75 172.9 117.4 179.0 150.6 Z"], ["#ffffff", "M77.5 98.55 Q83.05 104.6 82.75 113.7 82.5 121.5 76.5 127.05 70.5 132.65 63.15 132.0 54.6 131.3 49.35 125.5 44.0 119.7 44.6 111.35 45.2 103.25 51.6 97.6 57.6 92.3 64.45 92.55 72.25 92.8 77.5 98.55"], ["#ee848c", "M26.1 119.45 Q28.4 123.05 27.35 126.7 26.2 130.4 23.2 132.1 20.75 133.45 17.45 133.4 10.25 133.25 5.8 130.75 1.2 128.2 1.05 123.9 0.95 121.7 2.45 119.85 L3.95 118.45 Q0.75 113.45 3.4 109.7 6.0 106.05 11.15 107.45 L10.75 108.4 Q10.4 109.45 10.75 110.05 11.6 111.55 14.5 112.9 16.65 113.95 21.95 115.75 24.15 116.5 26.1 119.45"], ["DARK", "M163.85 189.6 Q140.9 207.55 103.4 206.15 84.7 205.4 70.55 201.1 L68.35 201.45 Q61.5 201.5 51.55 196.7 40.7 191.5 31.1 182.75 6.45 160.35 4.3 129.8 9.7 133.05 14.95 133.05 25.05 149.85 43.95 160.9 61.45 171.15 84.4 175.35 106.25 179.35 129.3 177.25 152.2 175.15 171.65 167.45 L163.85 189.6 Z"], ["#0d131a", "M180.5 155.7 Q180.85 158.55 179.9 159.0 179.0 159.45 178.7 156.75 174.35 120.55 147.65 95.55 136.7 85.3 123.55 78.55 111.55 72.45 100.35 70.45 100.1 70.4 99.75 69.3 99.4 68.25 99.65 68.3 111.4 70.15 123.8 76.25 137.4 82.95 148.65 93.25 176.0 118.4 180.5 155.7"], ["#0d131a", "M25.1 119.5 Q23.6 117.35 21.1 116.5 12.25 113.4 10.25 110.95 9.35 109.8 10.15 108.1 5.3 107.7 3.75 111.35 2.4 114.6 4.4 117.1 6.2 119.4 9.95 120.95 13.55 122.5 18.0 123.0 20.9 123.3 20.6 123.85 L17.15 124.05 Q8.0 123.05 3.95 119.2 1.8 121.05 1.95 124.1 2.15 127.55 5.4 129.55 8.65 131.6 13.65 132.25 18.05 132.85 20.55 132.15 23.3 131.35 24.85 129.4 26.45 127.45 26.55 124.6 26.7 121.7 25.1 119.5 M82.8 67.45 Q85.7 67.4 85.45 68.3 85.25 69.2 82.25 69.25 55.75 69.7 36.05 81.6 18.7 92.15 11.95 107.85 11.3 109.4 11.35 109.75 11.35 110.1 12.25 110.85 13.3 111.7 15.8 112.75 L21.75 114.9 Q25.35 116.15 27.15 119.1 28.6 121.55 28.6 124.5 28.6 127.6 26.55 130.2 24.35 132.9 21.0 133.65 17.85 134.3 13.25 133.7 7.85 133.0 4.6 130.95 0.55 128.4 0.05 124.3 -0.45 120.3 2.95 118.15 -0.2 114.2 2.35 109.85 3.5 107.95 5.7 107.0 7.9 106.1 10.5 106.45 20.35 85.8 42.2 75.7 60.35 67.3 82.8 67.45"], ["#0d131a", "M90.0 59.8 Q94.2 59.6 98.15 65.0 102.35 70.65 105.05 80.85 111.5 105.4 106.2 141.2 101.7 171.5 87.55 189.0 81.85 196.1 75.65 199.5 69.95 202.65 65.55 201.85 43.25 197.8 25.6 179.35 5.65 158.5 3.6 129.75 L4.5 129.7 Q5.45 129.95 5.45 130.25 7.4 157.35 27.85 178.25 36.45 187.0 46.85 192.85 56.7 198.45 65.8 200.1 69.85 200.85 75.2 197.65 81.0 194.2 86.4 187.25 99.85 169.95 104.15 140.9 109.35 106.2 103.35 82.0 100.95 72.2 97.15 66.65 93.6 61.45 90.05 61.6 86.75 61.75 84.05 65.25 82.7 67.0 82.0 68.75 L80.7 68.8 Q79.55 68.6 79.6 68.35 80.7 65.8 83.0 63.4 86.3 59.95 90.0 59.8"], ["#0d131a", "M167.75 185.05 Q169.75 183.25 170.0 184.15 170.25 185.05 168.15 187.0 150.15 203.8 119.55 206.75 93.45 209.3 69.05 201.6 68.8 201.5 69.75 200.85 70.65 200.25 71.0 200.35 96.6 207.4 122.3 204.1 150.7 200.5 167.75 185.05"], ["#0d131a", "M13.1 133.15 Q13.05 132.85 14.05 132.9 15.0 133.0 15.05 133.25 18.1 154.45 36.85 171.95 55.15 189.0 80.1 195.15 80.35 195.25 79.75 195.8 79.15 196.4 78.85 196.3 52.4 189.8 34.4 172.55 16.3 155.2 13.1 133.15"], ["#0d131a", "M37.85 188.85 Q37.55 188.85 37.45 188.25 37.35 187.65 37.65 187.6 40.4 187.2 43.8 185.75 46.95 184.4 49.0 182.9 49.2 182.75 49.85 183.3 50.45 183.85 50.25 184.05 47.85 185.9 44.55 187.2 41.05 188.6 37.85 188.85"], ["#0d131a", "M77.9 197.45 Q77.65 197.4 78.4 196.6 79.15 195.8 79.35 195.85 89.65 198.65 91.1 198.35 92.4 198.0 97.55 195.2 102.8 192.3 103.05 191.65 L102.85 184.95 102.6 179.3 103.5 179.6 104.4 180.4 104.6 186.4 Q104.65 191.75 104.4 192.4 104.0 193.25 98.3 196.6 92.75 199.85 91.8 200.0 90.1 200.4 77.9 197.45"], ["#0d131a", "M116.7 75.0 L119.5 75.5 Q121.35 77.1 123.75 80.4 126.2 83.75 126.05 84.55 125.9 85.25 123.3 87.75 L118.55 91.8 Q128.15 107.1 128.15 108.55 128.15 109.5 125.4 114.0 122.6 118.6 119.8 122.1 L124.4 127.55 122.5 127.15 118.0 122.7 117.9 122.25 117.9 121.8 123.45 113.8 Q126.35 109.4 126.55 108.55 126.1 107.15 116.2 91.6 L117.0 90.95 Q124.35 85.15 124.4 84.4 124.45 83.9 121.2 79.8 117.85 75.55 116.7 75.0"], ["#0d131a", "M94.1 177.4 L94.85 175.9 101.9 178.6 102.4 179.45 Q102.65 180.2 102.4 180.1 L94.1 177.4"], ["#0d131a", "M106.8 122.1 Q106.5 122.05 106.55 121.1 106.55 120.15 106.85 120.2 L118.5 121.55 Q118.8 121.55 118.95 122.3 119.15 123.1 118.95 123.05 L106.8 122.1"], ["#0d131a", "M106.0 90.85 Q105.65 90.85 105.4 89.9 105.1 88.95 105.4 88.95 L110.85 89.6 117.65 90.6 Q118.2 90.75 118.15 91.6 118.1 92.45 117.55 92.3 L106.0 90.85"], ["#0d131a", "M64.45 93.25 Q57.25 93.0 51.5 98.75 45.85 104.35 45.75 111.4 45.6 119.2 50.2 124.75 55.1 130.6 63.2 131.35 69.8 131.9 75.4 126.95 81.35 121.65 81.6 113.65 81.9 105.2 77.15 99.4 72.25 93.5 64.45 93.25 M49.75 97.7 Q55.95 91.35 64.5 91.65 73.05 91.95 78.6 98.3 84.15 104.65 83.85 113.7 83.6 122.0 77.0 127.9 70.6 133.55 63.1 132.9 53.85 132.1 48.5 125.6 43.6 119.7 43.7 111.55 43.85 103.75 49.75 97.7"], ["#0d131a", "M62.75 108.65 Q62.7 108.3 62.9 107.9 63.1 107.45 63.55 107.4 L64.45 107.7 64.85 108.6 Q64.9 109.95 63.85 109.95 63.35 110.0 63.05 109.6 62.75 109.25 62.75 108.65"], ["#0d131a", "M158.05 105.65 Q157.9 105.35 159.05 106.2 L160.35 107.5 Q169.65 134.9 160.0 166.05 156.05 178.85 149.7 188.95 143.6 198.6 137.35 202.7 L133.3 203.35 Q140.65 199.4 147.35 188.7 154.05 178.15 158.1 164.1 162.4 149.3 162.65 134.7 162.85 118.6 158.05 105.65"]], "bottomCrown": [["#f8f397", "M96.1 205.85 L109.35 206.4 Q115.35 212.25 124.8 226.75 133.75 240.5 138.05 249.8 139.15 252.2 138.1 252.6 137.25 252.95 134.9 252.05 132.3 251.1 122.55 246.6 112.05 241.75 109.45 240.15 L105.0 247.15 100.75 254.15 Q97.9 258.7 95.3 255.1 L81.55 233.1 71.2 244.1 64.35 232.3 Q57.05 235.9 52.95 237.5 48.15 239.3 49.8 234.45 51.6 229.05 57.25 218.1 62.7 207.55 66.7 201.5 L70.4 200.95 Q80.75 204.6 96.1 205.85"], ["#d5d283", "M96.95 205.8 L109.85 206.4 118.35 217.35 Q115.35 221.0 107.4 222.85 99.6 224.65 90.5 224.0 80.8 223.3 73.35 219.95 64.95 216.2 61.55 209.95 L66.7 201.35 70.55 201.1 Q81.8 204.5 96.95 205.8"], ["#0d131a", "M65.75 201.1 L66.95 201.0 Q68.0 201.15 67.85 201.35 65.2 205.05 59.7 215.25 52.75 228.05 50.3 235.6 49.7 237.55 51.95 236.85 54.0 236.2 59.55 233.45 59.8 233.35 60.1 234.4 60.35 235.5 60.1 235.6 L52.35 238.35 Q50.4 238.95 49.25 238.35 47.75 237.6 48.55 235.15 51.8 225.2 57.75 214.2 62.15 206.0 65.75 201.1"], ["#0d131a", "M108.05 206.5 Q107.95 206.4 109.1 206.25 L110.45 206.3 Q117.95 213.95 127.2 228.45 135.4 241.25 138.75 249.15 139.85 251.65 139.2 252.8 138.55 254.0 136.1 253.15 131.5 251.6 125.45 249.1 115.55 245.0 109.75 241.3 L101.0 254.85 Q97.9 259.45 94.8 255.6 92.85 253.1 88.75 246.7 83.8 239.05 81.55 234.45 L71.85 244.9 Q71.65 245.1 71.15 244.4 70.65 243.7 70.85 243.5 L80.3 233.0 Q81.2 231.95 81.95 232.05 82.65 232.15 83.4 233.5 L90.3 245.45 Q94.75 252.85 96.1 254.55 97.25 255.95 97.85 255.9 98.55 255.85 99.6 253.95 L108.2 240.0 Q108.8 239.0 109.25 238.95 109.7 238.9 110.9 239.7 115.95 243.0 125.8 247.3 133.35 250.65 136.55 251.65 L137.8 251.75 137.1 249.65 Q134.5 243.6 125.15 229.15 114.5 212.75 108.05 206.5"]] };
+    const MAGIKARP_PIVOTS = {
+      mouth: { x: 2.0, y: 120.0 },
+      tail: { x: 171.5, y: 170.0 },
+      frontWhisker: { x: 12.0, y: 154.0 },
+      mainWhisker: { x: 42.0, y: 138.0 },
+      pectoral: { x: 78.0, y: 142.0 },
+      crown: { x: 135.0, y: 72.0 },
+      bottomCrown: { x: 88.0, y: 203.5 }
+    };
+
+    let COMPILED_PARTS = null;
+    function getCompiledParts() {
+      if (!COMPILED_PARTS) {
+        COMPILED_PARTS = {};
+        for (const [key, list] of Object.entries(MAGIKARP_SVG_PARTS)) {
+          COMPILED_PARTS[key] = list.map(([fill, d]) => ({ fill, path: new Path2D(d) }));
+        }
+      }
+      return COMPILED_PARTS;
+    }
+
+    // =========================================================================
+    // Math, Vector, and Random Utilities
+    // =========================================================================
+    const rand = (min, max) => Math.random() * (max - min) + min;
+    const clamp = (val, min, max) => Math.max(min, Math.min(max, val));
+
+    const randn = () => {
+      let u = 0, v = 0;
+      while (u === 0) u = Math.random();
+      while (v === 0) v = Math.random();
+      return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+    };
+
+    const angleWrap = (angle) => {
+      return ((angle + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI;
+    };
+
+    // =========================================================================
+    // High-Efficiency 2D/3D Simplex Noise for Fluid Vector Fields
+    // =========================================================================
+    class SimplexNoise {
+      constructor() {
+        this.p = new Uint8Array(256);
+        for (let i = 0; i < 256; i++) this.p[i] = i;
+        for (let i = 255; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          const t = this.p[i];
+          this.p[i] = this.p[j];
+          this.p[j] = t;
+        }
+        this.perm = new Uint8Array(512);
+        this.permMod12 = new Uint8Array(512);
+        for (let i = 0; i < 512; i++) {
+          this.perm[i] = this.p[i & 255];
+          this.permMod12[i] = this.perm[i] % 12;
+        }
+        this.grad3 = [
+          [1, 1, 0], [-1, 1, 0], [1, -1, 0], [-1, -1, 0],
+          [1, 0, 1], [-1, 0, 1], [1, 0, -1], [-1, 0, -1],
+          [0, 1, 1], [0, -1, 1], [0, 1, -1], [0, -1, -1]
+        ];
+      }
+
+      noise3D(xin, yin, zin) {
+        const F3 = 1.0 / 3.0;
+        const G3 = 1.0 / 6.0;
+        let n0 = 0, n1 = 0, n2 = 0, n3 = 0;
+        const s = (xin + yin + zin) * F3;
+        const i = Math.floor(xin + s);
+        const j = Math.floor(yin + s);
+        const k = Math.floor(zin + s);
+        const t = (i + j + k) * G3;
+        const X0 = i - t;
+        const Y0 = j - t;
+        const Z0 = k - t;
+        const x0 = xin - X0;
+        const y0 = yin - Y0;
+        const z0 = zin - Z0;
+
+        let i1, j1, k1, i2, j2, k2;
+        if (x0 >= y0) {
+          if (y0 >= z0) { i1 = 1; j1 = 0; k1 = 0; i2 = 1; j2 = 1; k2 = 0; }
+          else if (x0 >= z0) { i1 = 1; j1 = 0; k1 = 0; i2 = 1; j2 = 0; k2 = 1; }
+          else { i1 = 0; j1 = 0; k1 = 1; i2 = 1; j2 = 0; k2 = 1; }
+        } else {
+          if (y0 < z0) { i1 = 0; j1 = 0; k1 = 1; i2 = 0; j2 = 1; k2 = 1; }
+          else if (x0 < z0) { i1 = 0; j1 = 1; k1 = 0; i2 = 0; j2 = 1; k2 = 1; }
+          else { i1 = 0; j1 = 1; k1 = 0; i2 = 1; j2 = 1; k2 = 0; }
+        }
+
+        const x1 = x0 - i1 + G3;
+        const y1 = y0 - j1 + G3;
+        const z1 = z0 - k1 + G3;
+        const x2 = x0 - i2 + 2.0 * G3;
+        const y2 = y0 - j2 + 2.0 * G3;
+        const z2 = z0 - k2 + 2.0 * G3;
+        const x3 = x0 - 1.0 + 3.0 * G3;
+        const y3 = y0 - 1.0 + 3.0 * G3;
+        const z3 = z0 - 1.0 + 3.0 * G3;
+
+        const ii = i & 255;
+        const jj = j & 255;
+        const kk = k & 255;
+
+        let t0 = 0.6 - x0 * x0 - y0 * y0 - z0 * z0;
+        if (t0 > 0) {
+          const gi0 = this.permMod12[ii + this.perm[jj + this.perm[kk]]];
+          t0 *= t0;
+          n0 = t0 * t0 * (this.grad3[gi0][0] * x0 + this.grad3[gi0][1] * y0 + this.grad3[gi0][2] * z0);
+        }
+        let t1 = 0.6 - x1 * x1 - y1 * y1 - z1 * z1;
+        if (t1 > 0) {
+          const gi1 = this.permMod12[ii + i1 + this.perm[jj + j1 + this.perm[kk + k1]]];
+          t1 *= t1;
+          n1 = t1 * t1 * (this.grad3[gi1][0] * x1 + this.grad3[gi1][1] * y1 + this.grad3[gi1][2] * z1);
+        }
+        let t2 = 0.6 - x2 * x2 - y2 * y2 - z2 * z2;
+        if (t2 > 0) {
+          const gi2 = this.permMod12[ii + i2 + this.perm[jj + j2 + this.perm[kk + k2]]];
+          t2 *= t2;
+          n2 = t2 * t2 * (this.grad3[gi2][0] * x2 + this.grad3[gi2][1] * y2 + this.grad3[gi2][2] * z2);
+        }
+        let t3 = 0.6 - x3 * x3 - y3 * y3 - z3 * z3;
+        if (t3 > 0) {
+          const gi3 = this.permMod12[ii + 1 + this.perm[jj + 1 + this.perm[kk + 1]]];
+          t3 *= t3;
+          n3 = t3 * t3 * (this.grad3[gi3][0] * x3 + this.grad3[gi3][1] * y3 + this.grad3[gi3][2] * z3);
+        }
+        return 32.0 * (n0 + n1 + n2 + n3);
+      }
+    }
+
+    const simplex = new SimplexNoise();
+
+    // The old implementation evaluated eight 3D simplex samples for every plant
+    // segment, particle, fish, and kelp strand on every frame.  A slowly refreshed
+    // flow field keeps the same coherent-water feeling while making each consumer a
+    // cheap bilinear lookup.
+    const FLOW_CELL_SIZE = 96;
+    let flowCols = 0;
+    let flowRows = 0;
+    let flowU = new Float32Array(0);
+    let flowV = new Float32Array(0);
+    let lastFlowUpdate = -Infinity;
+
+    function rebuildFlowField(timeSec) {
+      flowCols = Math.ceil(w / FLOW_CELL_SIZE) + 1;
+      flowRows = Math.ceil(h / FLOW_CELL_SIZE) + 1;
+      flowU = new Float32Array(flowCols * flowRows);
+      flowV = new Float32Array(flowCols * flowRows);
+      const t = timeSec * 0.14;
+
+      for (let row = 0; row < flowRows; row++) {
+        for (let col = 0; col < flowCols; col++) {
+          const x = col * FLOW_CELL_SIZE * 0.012;
+          const y = row * FLOW_CELL_SIZE * 0.012;
+          const i = row * flowCols + col;
+          flowU[i] = (Math.sin(x + t) + Math.cos(y * 1.3 - t * 0.8)) * 5.5;
+          flowV[i] = (Math.cos(y - t * 0.9) - Math.sin(x * 1.2 + t * 0.7)) * 5.5;
+        }
+      }
+      lastFlowUpdate = timeSec;
+    }
+
+    function getCurlNoise(x, y, timeSec) {
+      if (timeSec - lastFlowUpdate > 0.5 || flowU.length === 0) rebuildFlowField(timeSec);
+
+      const gx = clamp(x / FLOW_CELL_SIZE, 0, flowCols - 1.001);
+      const gy = clamp(y / FLOW_CELL_SIZE, 0, flowRows - 1.001);
+      const x0 = gx | 0;
+      const y0 = gy | 0;
+      const x1 = x0 + 1;
+      const y1 = y0 + 1;
+      const tx = gx - x0;
+      const ty = gy - y0;
+      const i00 = y0 * flowCols + x0;
+      const i10 = y0 * flowCols + x1;
+      const i01 = y1 * flowCols + x0;
+      const i11 = y1 * flowCols + x1;
+      const u0 = flowU[i00] + (flowU[i10] - flowU[i00]) * tx;
+      const u1 = flowU[i01] + (flowU[i11] - flowU[i01]) * tx;
+      const v0 = flowV[i00] + (flowV[i10] - flowV[i00]) * tx;
+      const v1 = flowV[i01] + (flowV[i11] - flowV[i01]) * tx;
+      return { u: u0 + (u1 - u0) * ty, v: v0 + (v1 - v0) * ty };
+    }
+
+    // =========================================================================
+    // Procedural Web Audio API Hydroacoustic Synthesis
+    // =========================================================================
+    class SoundEngine {
+      constructor() {
+        this.ctx = null;
+        this.ambientGain = null;
+        this.filter = null;
+        this.lfo = null;
+        this.noiseNode = null;
+        this.isEnabled = false;
+        this.isInitialized = false;
+      }
+
+      init() {
+        if (this.isInitialized) return;
+        try {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          if (!AudioContext) return;
+          this.ctx = new AudioContext();
+
+          this.ambientGain = this.ctx.createGain();
+          this.ambientGain.gain.setValueAtTime(0.0001, this.ctx.currentTime);
+          this.ambientGain.connect(this.ctx.destination);
+
+          this.filter = this.ctx.createBiquadFilter();
+          this.filter.type = 'lowpass';
+          this.filter.frequency.setValueAtTime(190, this.ctx.currentTime);
+          this.filter.Q.setValueAtTime(1.1, this.ctx.currentTime);
+          this.filter.connect(this.ambientGain);
+
+          const bufferSize = this.ctx.sampleRate * 5;
+          const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+          const output = noiseBuffer.getChannelData(0);
+          let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+          for (let i = 0; i < bufferSize; i++) {
+            const white = Math.random() * 2 - 1;
+            b0 = 0.99886 * b0 + white * 0.0555179;
+            b1 = 0.99332 * b1 + white * 0.0750759;
+            b2 = 0.96900 * b2 + white * 0.1538520;
+            b3 = 0.86650 * b3 + white * 0.3104856;
+            b4 = 0.55000 * b4 + white * 0.5329522;
+            b5 = -0.7616 * b5 - white * 0.0168980;
+            output[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362) * 0.040;
+            b6 = white * 0.115926;
+          }
+
+          this.noiseNode = this.ctx.createBufferSource();
+          this.noiseNode.buffer = noiseBuffer;
+          this.noiseNode.loop = true;
+          this.noiseNode.connect(this.filter);
+          this.noiseNode.start(0);
+
+          this.lfo = this.ctx.createOscillator();
+          this.lfo.frequency.setValueAtTime(0.07, this.ctx.currentTime);
+          const lfoGain = this.ctx.createGain();
+          lfoGain.gain.setValueAtTime(30, this.ctx.currentTime);
+          this.lfo.connect(lfoGain);
+          lfoGain.connect(this.filter.frequency);
+          this.lfo.start(0);
+
+          this.isInitialized = true;
+        } catch (err) {
+          console.warn('Web Audio error:', err);
+        }
+      }
+
+      toggle() {
+        if (!this.isInitialized) this.init();
+        if (!this.ctx) return false;
+        if (this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+        this.isEnabled = !this.isEnabled;
+        const targetGain = this.isEnabled ? 0.07 : 0.0001;
+        this.ambientGain.gain.linearRampToValueAtTime(targetGain, this.ctx.currentTime + 1.2);
+        return this.isEnabled;
+      }
+
+      playBubble(xNorm = 0.5, pitchBase = 580) {
+        if (!this.isEnabled || !this.ctx || this.ctx.state !== 'running') return;
+        try {
+          const now = this.ctx.currentTime;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+
+          let panner = null;
+          if (this.ctx.createStereoPanner) {
+            panner = this.ctx.createStereoPanner();
+            panner.pan.setValueAtTime(clamp(xNorm * 2 - 1, -0.85, 0.85), now);
+          }
+
+          const f0 = pitchBase + rand(-50, 50);
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(f0, now);
+          osc.frequency.exponentialRampToValueAtTime(f0 * 1.32, now + 0.045);
+
+          gain.gain.setValueAtTime(0.035, now);
+          gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.048);
+
+          if (panner) {
+            osc.connect(gain);
+            gain.connect(panner);
+            panner.connect(this.ctx.destination);
+          } else {
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+          }
+
+          osc.start(now);
+          osc.stop(now + 0.05);
+        } catch (_) { }
+      }
+    }
+
+    const soundEngine = new SoundEngine();
+
+    // =========================================================================
+    // Neural Brain Architecture
+    // =========================================================================
+    class Brain {
+      constructor(w1, w2) {
+        this.w1 = w1 || Array.from({ length: 6 }, () =>
+          Array.from({ length: 6 }, () => rand(-1.0, 1.0))
+        );
+        this.w2 = w2 || Array.from({ length: 2 }, () =>
+          Array.from({ length: 7 }, () => rand(-1.0, 1.0))
+        );
+      }
+
+      predict(x) {
+        const hidden = this.w1.map(row => {
+          let sum = 0;
+          for (let i = 0; i < 6; i++) sum += row[i] * x[i];
+          return Math.tanh(sum);
+        });
+
+        const hWithBias = [...hidden, 1.0];
+        let sum0 = 0, sum1 = 0;
+        for (let i = 0; i < 7; i++) {
+          sum0 += this.w2[0][i] * hWithBias[i];
+          sum1 += this.w2[1][i] * hWithBias[i];
+        }
+        const steer = Math.tanh(sum0);
+        const thrust = 1.0 / (1.0 + Math.exp(-sum1));
+        return [steer, thrust];
+      }
+
+      mutate(rate = 0.12, power = 0.22) {
+        const mutateVal = v => (Math.random() < rate ? v + randn() * power : v);
+        return new Brain(
+          this.w1.map(row => row.map(mutateVal)),
+          this.w2.map(row => row.map(mutateVal))
+        );
+      }
+    }
+
+    // =========================================================================
+    // Spatial Grid for O(N) Neighbors
+    // =========================================================================
+    class SpatialGrid {
+      constructor(cellSize = 90) {
+        this.cellSize = cellSize;
+        this.buckets = new Map();
+      }
+      clear() { this.buckets.clear(); }
+      key(x, y) {
+        return `${Math.floor(x / this.cellSize)},${Math.floor(y / this.cellSize)}`;
+      }
+      insert(entity) {
+        const k = this.key(entity.x, entity.y);
+        let list = this.buckets.get(k);
+        if (!list) { list = []; this.buckets.set(k, list); }
+        list.push(entity);
+      }
+      queryNeighbors(x, y, radius) {
+        const results = [];
+        const minCx = Math.floor((x - radius) / this.cellSize);
+        const maxCx = Math.floor((x + radius) / this.cellSize);
+        const minCy = Math.floor((y - radius) / this.cellSize);
+        const maxCy = Math.floor((y + radius) / this.cellSize);
+        const r2 = radius * radius;
+        for (let cx = minCx; cx <= maxCx; cx++) {
+          for (let cy = minCy; cy <= maxCy; cy++) {
+            const list = this.buckets.get(`${cx},${cy}`);
+            if (list) {
+              for (let i = 0; i < list.length; i++) {
+                const e = list[i];
+                const dx = e.x - x;
+                const dy = e.y - y;
+                if (dx * dx + dy * dy <= r2) results.push(e);
+              }
+            }
+          }
+        }
+        return results;
+      }
+    }
+
+    const spatialGrid = new SpatialGrid(90);
+
+    // =========================================================================
+    // Algae Biofilm Surface Layer
+    // =========================================================================
+    class AlgaeGrid {
+      constructor(w, h, cellSize = 38) {
+        this.cellSize = cellSize;
+        this.offscreen = document.createElement('canvas');
+        this.offCtx = this.offscreen.getContext('2d', { alpha: true });
+        this.resize(w, h);
+      }
+
+      resize(w, h) {
+        this.w = w;
+        this.h = h;
+        this.cols = Math.ceil(w / this.cellSize);
+        this.rows = Math.ceil(h / this.cellSize);
+        this.total = this.cols * this.rows;
+        this.grid = new Float32Array(this.total);
+        this.offscreen.width = this.cols;
+        this.offscreen.height = this.rows;
+        this.imgData = this.offCtx.createImageData(this.cols, this.rows);
+        this.seedColonies(10);
+        this.dirty = true;
+        this.updateTexture();
+      }
+
+      seedColonies(count) {
+        for (let i = 0; i < count; i++) {
+          const c = Math.floor(rand(2, this.cols - 2));
+          const r = Math.floor(rand(2, this.rows - 2));
+          for (let dy = -1; dy <= 1; dy++) {
+            for (let dx = -1; dx <= 1; dx++) {
+              const nc = c + dx;
+              const nr = r + dy;
+              if (nc >= 0 && nc < this.cols && nr >= 0 && nr < this.rows) {
+                const idx = nr * this.cols + nc;
+                this.grid[idx] = Math.min(0.55, (this.grid[idx] || 0) + rand(0.20, 0.35));
+              }
+            }
+          }
+        }
+      }
+
+      update(tick) {
+        let changed = false;
+        if (tick % 25 === 0) {
+          for (let r = 0; r < this.rows; r++) {
+            const light = 0.85 + (1.0 - r / this.rows) * 0.30;
+            const rowOffset = r * this.cols;
+            for (let c = 0; c < this.cols; c++) {
+              const idx = rowOffset + c;
+              const val = this.grid[idx];
+              if (val > 0.04 && val < 0.60) {
+                this.grid[idx] = Math.min(0.60, val + 0.0012 * light * (0.65 - val));
+                changed = true;
+              }
+            }
+          }
+        }
+
+        if (tick % 100 === 0) {
+          const idx = Math.floor(Math.random() * this.total);
+          if (this.grid[idx] < 0.08) {
+            this.grid[idx] = 0.20;
+            changed = true;
+          }
+        }
+
+        if (changed) this.dirty = true;
+        if (this.dirty && tick % 30 === 0) {
+          this.updateTexture();
+          this.dirty = false;
+        }
+      }
+
+      updateTexture() {
+        const d = this.imgData.data;
+        for (let i = 0; i < this.total; i++) {
+          const val = this.grid[i];
+          const p = i * 4;
+          if (val > 0.04) {
+            d[p] = 20;
+            d[p + 1] = 180;
+            d[p + 2] = 145;
+            d[p + 3] = Math.floor(val * 55);
+          } else {
+            d[p + 3] = 0;
+          }
+        }
+        this.offCtx.putImageData(this.imgData, 0, 0);
+      }
+
+      grazeAt(x, y, radius = 24) {
+        const c = Math.floor(x / this.cellSize);
+        const r = Math.floor(y / this.cellSize);
+        if (c < 0 || c >= this.cols || r < 0 || r >= this.rows) return 0;
+
+        let gained = 0;
+        const rCells = Math.ceil(radius / this.cellSize);
+        for (let dy = -rCells; dy <= rCells; dy++) {
+          for (let dx = -rCells; dx <= rCells; dx++) {
+            const nc = c + dx;
+            const nr = r + dy;
+            if (nc >= 0 && nc < this.cols && nr >= 0 && nr < this.rows) {
+              const idx = nr * this.cols + nc;
+              if (this.grid[idx] > 0.10) {
+                const bite = Math.min(this.grid[idx], 0.24);
+                this.grid[idx] -= bite;
+                gained += bite * 0.25; // Healthy nourishment
+                this.dirty = true;
+              }
+            }
+          }
+        }
+        return gained;
+      }
+
+      hasAlgaeAt(x, y, radius = 26) {
+        const c = Math.floor(x / this.cellSize);
+        const r = Math.floor(y / this.cellSize);
+        if (c < 0 || c >= this.cols || r < 0 || r >= this.rows) return false;
+        const rCells = Math.ceil(radius / this.cellSize);
+        for (let dy = -rCells; dy <= rCells; dy++) {
+          for (let dx = -rCells; dx <= rCells; dx++) {
+            const nc = c + dx;
+            const nr = r + dy;
+            if (nc >= 0 && nc < this.cols && nr >= 0 && nr < this.rows) {
+              if (this.grid[nr * this.cols + nc] > 0.12) return true;
+            }
+          }
+        }
+        return false;
+      }
+
+      getCoveragePct() {
+        let covered = 0;
+        for (let i = 0; i < this.total; i++) {
+          if (this.grid[i] > 0.15) covered++;
+        }
+        return Math.round((covered / this.total) * 100);
+      }
+
+      draw(ctx) {
+        ctx.save();
+        ctx.imageSmoothingEnabled = true;
+        ctx.drawImage(this.offscreen, 0, 0, this.w, this.h);
+        ctx.restore();
+      }
+    }
+
+    // =========================================================================
+    // Flexible Multi-Segment Benthic Flora
+    // =========================================================================
+    let plantIdCounter = 1;
+
+    class Plant {
+      constructor(x, type = 0) {
+        this.id = plantIdCounter++;
+        this.x = x;
+        this.type = type;
+        this.segmentCount = 6;
+        this.maxHeight = rand(240, 310);
+        this.biomass = rand(0.65, 0.90);
+        // Well-balanced growth rate: yields ~1 bud every 20-25s, sustaining 3-5 fish comfortably
+        this.growthRate = rand(0.00060, 0.00085);
+        this.phase = rand(0, Math.PI * 2);
+        this.recoil = 0;
+
+        this.segments = Array.from({ length: this.segmentCount }, () => ({ x: this.x, y: 0 }));
+
+        this.buds = [
+          { segIndex: 3, t: 0.60, ready: true, x: x, y: 0, size: 4.2, energy: 0.45 },
+          { segIndex: 5, t: 0.95, ready: true, x: x, y: 0, size: 5.0, energy: 0.52 }
+        ];
+      }
+
+      update(timeSec, h) {
+        if (this.biomass < 1.0) {
+          const growth = this.growthRate * Math.max(0.12, this.biomass) * (1.05 - this.biomass);
+          this.biomass = clamp(this.biomass + growth, 0.10, 1.0);
+        }
+        this.recoil *= 0.94;
+
+        const currentHeight = this.maxHeight * Math.pow(this.biomass, 0.85);
+
+        this.segments[0].x = this.x;
+        this.segments[0].y = h;
+
+        for (let i = 1; i < this.segmentCount; i++) {
+          const frac = i / (this.segmentCount - 1);
+          const prev = this.segments[i - 1];
+          const targetY = h - frac * currentHeight;
+
+          const curl = getCurlNoise(prev.x, targetY, timeSec);
+          const fluidSway = curl.u * 12.0 * frac;
+          const harmonicSway = Math.sin(timeSec * 0.9 + this.phase + i * 0.45) * (14.0 * frac);
+          const recoilSway = this.recoil * frac;
+
+          const targetX = this.x + fluidSway + harmonicSway + recoilSway;
+          this.segments[i].x += (targetX - this.segments[i].x) * 0.18;
+          this.segments[i].y = targetY;
+        }
+
+        for (let i = 0; i < this.buds.length; i++) {
+          const b = this.buds[i];
+          const requiredBiomass = (i + 1) / (this.buds.length + 0.35);
+          b.ready = this.biomass >= requiredBiomass;
+          const hostSeg = this.segments[b.segIndex] || this.segments[this.segmentCount - 1];
+          b.x = hostSeg.x;
+          b.y = hostSeg.y;
+        }
+      }
+
+      graze(budIndex) {
+        const b = this.buds[budIndex];
+        if (b && b.ready) {
+          b.ready = false;
+          this.biomass = Math.max(0.12, this.biomass - 0.22);
+          this.recoil = (Math.random() < 0.5 ? -18 : 18);
+          return b.energy;
+        }
+        return 0;
+      }
+
+      fertilize(amount = 0.20) {
+        this.biomass = clamp(this.biomass + amount, 0.10, 1.0);
+      }
+
+      draw(ctx, h) {
+        const alpha = clamp(this.biomass * 0.70 + 0.30, 0.25, 0.95);
+        const stemColor = this.type === 1 ? `rgba(20, 120, 90, ${alpha})` : `rgba(16, 96, 75, ${alpha})`;
+        const budColor = this.type === 1 ? `rgba(94, 234, 212, ${alpha})` : `rgba(52, 211, 153, ${alpha})`;
+
+        ctx.save();
+        ctx.strokeStyle = stemColor;
+        ctx.lineWidth = 2.4;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+
+        ctx.beginPath();
+        ctx.moveTo(this.segments[0].x, this.segments[0].y);
+        for (let i = 1; i < this.segmentCount - 1; i++) {
+          const xc = (this.segments[i].x + this.segments[i + 1].x) / 2;
+          const yc = (this.segments[i].y + this.segments[i + 1].y) / 2;
+          ctx.quadraticCurveTo(this.segments[i].x, this.segments[i].y, xc, yc);
+        }
+        ctx.lineTo(this.segments[this.segmentCount - 1].x, this.segments[this.segmentCount - 1].y);
+        ctx.stroke();
+
+        ctx.lineWidth = 1.2;
+        for (let i = 1; i < this.segmentCount - 1; i++) {
+          const seg = this.segments[i];
+          const side = (i % 2 === 0) ? 1 : -1;
+          ctx.beginPath();
+          ctx.moveTo(seg.x, seg.y);
+          ctx.quadraticCurveTo(seg.x + side * 14, seg.y - 6, seg.x + side * 22, seg.y - 12);
+          ctx.stroke();
+        }
+
+        for (let i = 0; i < this.buds.length; i++) {
+          const b = this.buds[i];
+          if (b.ready) {
+            ctx.fillStyle = budColor;
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 1.0;
+            ctx.beginPath();
+            ctx.arc(b.x, b.y, b.size, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = `rgba(94, 234, 212, 0.25)`;
+            ctx.beginPath();
+            ctx.arc(b.x, b.y, b.size * 2.2, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+        ctx.restore();
+      }
+    }
+
+    // =========================================================================
+    // Suspended Marine Snow Particulate Matter
+    // =========================================================================
+    class MarineSnowParticle {
+      constructor(w, h) {
+        this.x = rand(0, w);
+        this.y = rand(0, h);
+        this.vx = 0;
+        this.vy = 0;
+        this.radius = rand(0.9, 2.2);
+        this.baseAlpha = rand(0.18, 0.42);
+        this.phase = rand(0, Math.PI * 2);
+        this.buoyancy = rand(-0.06, -0.01);
+      }
+
+      update(w, h, timeSec) {
+        const curl = getCurlNoise(this.x, this.y, timeSec);
+        const brownianX = randn() * 0.06;
+        const brownianY = randn() * 0.06;
+
+        this.vx = this.vx * 0.92 + (curl.u * 0.45 + brownianX) * 0.08;
+        this.vy = this.vy * 0.92 + (curl.v * 0.45 + brownianY + this.buoyancy) * 0.08;
+
+        this.x += this.vx;
+        this.y += this.vy;
+
+        if (this.x < 0) this.x += w;
+        if (this.x > w) this.x -= w;
+        if (this.y < 0) this.y += h;
+        if (this.y > h) this.y -= h;
+      }
+
+      draw(ctx, timeSec) {
+        const alpha = this.baseAlpha * (0.65 + 0.35 * Math.sin(timeSec * 1.5 + this.phase));
+        ctx.fillStyle = `rgba(180, 220, 230, ${alpha.toFixed(3)})`;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    // =========================================================================
+    // Sunlight Nutrient Pellets
+    // =========================================================================
+    class Nutrient {
+      constructor(x, y, w, h) {
+        this.x = x || rand(50, w - 50);
+        this.y = y || rand(10, 40);
+        this.vy = rand(0.6, 1.0);
+        this.vx = rand(-0.2, 0.2);
+        this.size = 2.8;
+      }
+      update(h) {
+        this.y += this.vy;
+        this.x += this.vx;
+        return this.y > h - 16;
+      }
+      draw(ctx) {
+        ctx.fillStyle = '#fde68a';
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    // =========================================================================
+    // Visual Water Ripples & FX Particles
+    // =========================================================================
+    class WaterRipple {
+      constructor(x, y) {
+        this.x = x;
+        this.y = y;
+        this.radius = 4;
+        this.maxRadius = 85;
+        this.life = 1.0;
+      }
+      update() {
+        this.radius += 2.0;
+        this.life = Math.max(0, 1.0 - this.radius / this.maxRadius);
+        return this.life <= 0;
+      }
+      draw(ctx) {
+        ctx.save();
+        ctx.strokeStyle = `rgba(94, 234, 212, ${(this.life * 0.45).toFixed(3)})`;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+
+    class FXParticle {
+      constructor(x, y, color, vx, vy, maxLife = 35, size = 2) {
+        this.x = x;
+        this.y = y;
+        this.color = color;
+        this.vx = vx;
+        this.vy = vy;
+        this.life = maxLife;
+        this.maxLife = maxLife;
+        this.size = size;
+      }
+      update() {
+        this.x += this.vx;
+        this.y += this.vy;
+        this.life--;
+      }
+      draw(ctx) {
+        const alpha = Math.max(0, this.life / this.maxLife);
+        ctx.fillStyle = this.color.replace('ALPHA', alpha.toFixed(2));
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    // =========================================================================
+    // Magikarp Entity with Official Vector Art + Biomechanical Fluid Kinematics
+    // =========================================================================
+    let fishIdCounter = 1;
+
+    class Magikarp {
+      constructor(w, h, x, y, brain, gen = 1, traits = null, startEnergy = 1.5, startAge = 0) {
+        this.id = fishIdCounter++;
+        this.w = w;
+        this.h = h;
+        // Position (this.x, this.y) is the exact MOUTH / snout tip of the Magikarp!
+        this.x = x !== undefined ? x : rand(90, w - 90);
+        this.y = y !== undefined ? y : rand(90, h - 140);
+        this.heading = rand(0, Math.PI * 2);
+        this.speed = 1.4;
+        this.energy = startEnergy;
+        this.brain = brain || new Brain();
+        this.gen = gen;
+        this.age = startAge;
+        this.lastReproAge = -1500;
+        this.eaten = 0;
+
+        // 4 Evolved Traits
+        if (traits) {
+          this.b1 = clamp(traits.b1 + randn() * 0.06, 0.15, 0.95);
+          this.b2 = clamp(traits.b2 + randn() * 0.06, 0.15, 0.95);
+          this.b3 = clamp(traits.b3 + randn() * 0.06, 0.15, 0.95);
+          this.b4 = clamp(traits.b4 + randn() * 0.06, 0.15, 0.95);
+        } else {
+          this.b1 = rand(0.35, 0.75);
+          this.b2 = rand(0.35, 0.75);
+          this.b3 = rand(0.35, 0.75);
+          this.b4 = rand(0.35, 0.75);
+        }
+
+        // Tu & Terzopoulos Ethological Drives
+        this.hunger = 0.25;
+        this.stress = 0.0;
+        this.fatigue = 0.1;
+
+        // Burst-and-Glide Gait
+        this.isBursting = true;
+        this.gaitTimer = Math.floor(rand(25, 45));
+        this.tailWave = rand(0, Math.PI * 2);
+        this.roamAngle = this.heading;
+
+        // C-Start Escape Reflex
+        this.cStartStage = 0;
+        this.cStartTimer = 0;
+        this.cStartEscapeAngle = 0;
+
+        // Feeding Target
+        this.eatingTarget = null;
+        this.eatingTicks = 0;
+
+        // Pattern & Coloration
+        this.setupPhenotype();
+      }
+
+      setupPhenotype() {
+        this.r = Math.round(40 + 215 * this.b1);
+        this.g = Math.round(40 + 215 * this.b2);
+        this.b = Math.round(40 + 215 * this.b3);
+
+        this.hexBody = "#" + [this.r, this.g, this.b].map(x => x.toString(16).padStart(2, "0")).join("");
+        let rDark = Math.round(this.r * 0.72);
+        let gDark = Math.round(this.g * 0.72);
+        let bDark = Math.round(this.b * 0.72);
+        this.hexDark = "#" + [rDark, gDark, bDark].map(x => x.toString(16).padStart(2, "0")).join("");
+
+        if (this.b1 > 0.76 && this.b2 > 0.76 && this.b3 > 0.76) {
+          this.patternName = "Shiny Gold ★";
+          this.hexBody = "#ffd700";
+          this.hexDark = "#c69200";
+        } else if (this.b1 > 0.65 && this.b3 > 0.55 && this.b2 < 0.5) {
+          this.patternName = "Pink Orca";
+        } else if (this.b3 > 0.72) {
+          this.patternName = "Orca";
+        } else if (this.b2 > 0.72) {
+          this.patternName = "Tiger Stripes";
+        } else if (Math.abs(this.b1 - this.b2) > 0.35 && this.b3 < 0.5) {
+          this.patternName = "Calico";
+        } else if (this.b1 > 0.72) {
+          this.patternName = "Dapples";
+        } else {
+          this.patternName = "Two-Tone";
+        }
+      }
+
+      triggerCStart(threatX, threatY) {
+        if (this.cStartStage !== 0) return;
+        this.stress = 1.0;
+        this.cStartStage = 1;
+        this.cStartTimer = 6;
+        const angleFromThreat = Math.atan2(this.y - threatY, this.x - threatX);
+        this.cStartEscapeAngle = angleFromThreat + rand(-0.35, 0.35);
+        soundEngine.playBubble(this.x / this.w, 700);
+      }
+
+      update(candidates, algaeGrid, marineSnow, w, h, timeSec) {
+        this.w = w;
+        this.h = h;
+        this.age++;
+
+        // 1. Metabolic Burn
+        const speedSq = this.speed * this.speed;
+        const burn = 0.00018 * (1.0 + 0.22 * speedSq);
+        this.energy -= burn;
+        this.hunger = clamp(this.hunger + burn * 0.35, 0, 1.0);
+        this.stress = Math.max(0, this.stress - 0.012);
+
+        // 2. Couzin Three-Zone Schooling
+        const neighbors = spatialGrid.queryNeighbors(this.x, this.y, 300);
+        let repX = 0, repY = 0, repCount = 0;
+        let oriX = 0, oriY = 0, oriCount = 0;
+        let attX = 0, attY = 0, attCount = 0;
+
+        const rRep = 85.0;
+        const rOri = 180.0;
+        const rAtt = 290.0;
+
+        for (let i = 0; i < neighbors.length; i++) {
+          const other = neighbors[i];
+          if (other === this || !(other instanceof Magikarp)) continue;
+
+          const dx = other.x - this.x;
+          const dy = other.y - this.y;
+          const dist = Math.hypot(dx, dy);
+          if (dist < 0.01) continue;
+
+          const angleToOther = Math.atan2(dy, dx);
+          if (Math.abs(angleWrap(angleToOther - this.heading)) > (Math.PI * 0.82)) continue;
+
+          if (dist < rRep) {
+            repX -= dx / dist;
+            repY -= dy / dist;
+            repCount++;
+          } else if (dist < rOri) {
+            oriX += Math.cos(other.heading);
+            oriY += Math.sin(other.heading);
+            oriCount++;
+          } else if (dist < rAtt) {
+            attX += dx / dist;
+            attY += dy / dist;
+            attCount++;
+          }
+        }
+
+        // 3. Behavioral Steering & Food Navigation
+        let desiredAngle = this.heading;
+        const isSeekingFood = this.energy < 1.45 && candidates.length > 0;
+
+        if (this.cStartStage > 0) {
+          if (this.cStartStage === 1) {
+            this.speed *= 0.70;
+            this.cStartTimer--;
+            if (this.cStartTimer <= 0) {
+              this.cStartStage = 2;
+              this.cStartTimer = 18;
+              this.speed = 3.6;
+              this.heading = this.cStartEscapeAngle;
+            }
+          } else if (this.cStartStage === 2) {
+            desiredAngle = this.cStartEscapeAngle;
+            this.cStartTimer--;
+            if (this.cStartTimer <= 0) {
+              this.cStartStage = 0;
+            }
+          }
+        } else if (isSeekingFood) {
+          let nearest = null;
+          let minDist = Infinity;
+          for (let i = 0; i < candidates.length; i++) {
+            const c = candidates[i];
+            const dist = Math.hypot(c.x - this.x, c.y - this.y);
+            const bias = c.isPlant ? (1.4 - this.b2 * 0.8) : (1.4 - this.b3 * 0.8);
+            const effectiveDist = dist * bias;
+            if (effectiveDist < minDist) {
+              minDist = effectiveDist;
+              nearest = c;
+            }
+          }
+          if (nearest) {
+            desiredAngle = Math.atan2(nearest.y - this.y, nearest.x - this.x);
+          }
+        } else if (repCount > 0) {
+          desiredAngle = Math.atan2(repY, repX);
+        } else if (oriCount > 0 || attCount > 0) {
+          const combinedX = oriX * 1.1 + attX * 0.7;
+          const combinedY = oriY * 1.1 + attY * 0.7;
+          desiredAngle = Math.atan2(combinedY, combinedX);
+        } else {
+          const curl = getCurlNoise(this.x, this.y, timeSec);
+          this.roamAngle += rand(-0.025, 0.025) + curl.u * 0.002;
+          desiredAngle = this.roamAngle;
+        }
+
+        // 4. Soft Boundary Steering (Anticipatory Margins)
+        const margin = 125.0;
+        let boundX = 0, boundY = 0;
+        if (this.x < margin) boundX += Math.pow(1 - this.x / margin, 2);
+        else if (this.x > w - margin) boundX -= Math.pow(1 - (w - this.x) / margin, 2);
+        if (this.y < margin) boundY += Math.pow(1 - this.y / margin, 2);
+        else if (this.y > h - margin) boundY -= Math.pow(1 - (h - this.y) / margin, 2);
+
+        if (boundX !== 0 || boundY !== 0) {
+          const wallAngle = Math.atan2(boundY, boundX);
+          const angleDiff = angleWrap(wallAngle - this.heading);
+          this.heading += angleDiff * clamp(Math.hypot(boundX, boundY) * 0.12, 0, 0.18);
+          this.roamAngle = this.heading;
+        } else {
+          const angleDiff = angleWrap(desiredAngle - this.heading);
+          const maxTurn = this.cStartStage > 0 ? 0.15 : 0.034;
+          this.heading += clamp(angleDiff, -maxTurn, maxTurn);
+        }
+
+        // 5. Burst-and-Glide Pacing
+        this.gaitTimer--;
+        if (this.gaitTimer <= 0) {
+          this.isBursting = !this.isBursting;
+          this.gaitTimer = this.isBursting ? Math.floor(rand(25, 45)) : Math.floor(rand(35, 60));
+        }
+
+        const cruisePace = 1.2 + this.b1 * 0.6;
+        if (this.cStartStage > 0) {
+          // Escape burst
+        } else if (this.isBursting) {
+          this.speed = this.speed * 0.92 + cruisePace * 0.08;
+        } else {
+          this.speed = this.speed * 0.985 + 0.95 * 0.015;
+        }
+
+        this.tailWave += 0.08 + this.speed * 0.06;
+
+        // Movement forward: The mouth (this.x, this.y) leads the direction vector!
+        this.x += Math.cos(this.heading) * this.speed;
+        this.y += Math.sin(this.heading) * this.speed;
+
+        this.x = clamp(this.x, 45, w - 45);
+        this.y = clamp(this.y, 45, h - 45);
+
+        // 6. Natural Grazing & Feeding (Mouth contacts food directly!)
+        let grazedOutcome = { grazed: false };
+
+        if (this.eatingTarget) {
+          this.eatingTicks++;
+          this.speed *= 0.95;
+
+          if (this.eatingTicks >= 20) {
+            if (this.eatingTarget.type === "plant") {
+              const gain = this.eatingTarget.plant.graze(this.eatingTarget.budIndex);
+              if (gain > 0) {
+                this.energy = Math.min(this.energy + gain * (0.75 + 0.25 * this.b2), 2.2);
+                this.hunger = Math.max(0, this.hunger - 0.55);
+                this.eaten++;
+                grazedOutcome = { grazed: true, isPlant: true, x: this.x, y: this.y };
+                soundEngine.playBubble(this.x / this.w, 620);
+              }
+            } else if (this.eatingTarget.type === "algae") {
+              const gain = algaeGrid.grazeAt(this.eatingTarget.x, this.eatingTarget.y, 34);
+              if (gain > 0) {
+                this.energy = Math.min(this.energy + gain * (0.75 + 0.25 * this.b3), 2.2);
+                this.hunger = Math.max(0, this.hunger - 0.40);
+                this.eaten++;
+                grazedOutcome = { grazed: true, isAlgae: true, x: this.x, y: this.y };
+                soundEngine.playBubble(this.x / this.w, 560);
+              }
+            }
+            this.eatingTarget = null;
+            this.eatingTicks = 0;
+          }
+        } else if (this.energy < 1.8) {
+          let touchedBud = null;
+          for (let p of plants) {
+            for (let bIdx = 0; bIdx < p.buds.length; bIdx++) {
+              const bud = p.buds[bIdx];
+              if (bud.ready && Math.hypot(bud.x - this.x, bud.y - this.y) < 46) {
+                touchedBud = { plant: p, budIndex: bIdx, x: bud.x, y: bud.y };
+                break;
+              }
+            }
+            if (touchedBud) break;
+          }
+
+          if (touchedBud) {
+            this.eatingTarget = { type: "plant", plant: touchedBud.plant, budIndex: touchedBud.budIndex };
+            this.eatingTicks = 0;
+          } else if (algaeGrid.hasAlgaeAt(this.x, this.y, 34)) {
+            this.eatingTarget = { type: "algae", x: this.x, y: this.y };
+            this.eatingTicks = 0;
+          }
+        }
+
+        if (this.y < 35 && Math.random() < 0.03) {
+          soundEngine.playBubble(this.x / this.w, 800);
+        }
+
+        return grazedOutcome;
+      }
+
+      // Draw authentic Magikarp with moving SVG parts and mouth leading the vector!
+      draw(ctx) {
+        const parts = getCompiledParts();
+        ctx.save();
+        ctx.translate(this.x, this.y); // Anchored at the MOUTH!
+
+        // Determine facing direction & pitch angle
+        // In BOTH directions, mouth tilts towards velocity, dorsal crown stays on top, belly never leads!
+        const facingRight = Math.cos(this.heading) >= 0;
+        let pitch = 0;
+        if (facingRight) {
+          pitch = clamp(this.heading, -0.42, 0.42);
+          ctx.rotate(pitch);
+          ctx.scale(-1, 1); // Flip horizontally because SVG natively faces LEFT
+        } else {
+          const diff = angleWrap(this.heading - Math.PI);
+          pitch = clamp(diff, -0.42, 0.42);
+          ctx.rotate(pitch);
+        }
+
+        // Natural swimming body recoil at mouth
+        const bodyWobble = Math.sin(this.tailWave) * (this.isBursting ? 0.04 : 0.018);
+        ctx.rotate(bodyWobble);
+
+        const maturityScale = clamp(this.age / 900, 0.70, 1.0);
+        const s = (150 / 262) * maturityScale;
+        ctx.scale(s, s);
+
+        // Shift mouth (2.0, 120.0) in SVG space to (0, 0) in local canvas space
+        ctx.translate(-MAGIKARP_PIVOTS.mouth.x, -MAGIKARP_PIVOTS.mouth.y);
+
+        const renderList = (list) => {
+          for (let i = 0; i < list.length; i++) {
+            const item = list[i];
+            let color = item.fill;
+            if (color === "BODY") color = this.hexBody;
+            else if (color === "DARK") color = this.hexDark;
+            ctx.fillStyle = color;
+            ctx.fill(item.path);
+          }
+        };
+
+        // 1. Front Whisker (far side, behind body) - dynamically sways with current!
+        const w1Angle = Math.sin(this.tailWave * 0.85 + 0.6) * 0.18 + (this.speed * 0.04);
+        ctx.save();
+        ctx.translate(MAGIKARP_PIVOTS.frontWhisker.x, MAGIKARP_PIVOTS.frontWhisker.y);
+        ctx.rotate(w1Angle);
+        ctx.translate(-MAGIKARP_PIVOTS.frontWhisker.x, -MAGIKARP_PIVOTS.frontWhisker.y);
+        renderList(parts.frontWhisker);
+        ctx.restore();
+
+        // 2. Caudal Tail Fin & Dorsal Back Fin (articulates dynamically at caudal peduncle)
+        const tailWag = Math.sin(this.tailWave) * (this.isBursting ? 0.25 : 0.10);
+        ctx.save();
+        ctx.translate(MAGIKARP_PIVOTS.tail.x, MAGIKARP_PIVOTS.tail.y);
+        ctx.rotate(tailWag);
+        ctx.translate(-MAGIKARP_PIVOTS.tail.x, -MAGIKARP_PIVOTS.tail.y);
+        renderList(parts.tail);
+        ctx.restore();
+
+        // 3. Ventral Pelvic Fin / Bottom Crown (articulates gracefully under the belly)
+        const bottomCrownAngle = Math.sin(this.tailWave * 0.9 + 2.4) * 0.08 + (this.speed * 0.02);
+        ctx.save();
+        ctx.translate(MAGIKARP_PIVOTS.bottomCrown.x, MAGIKARP_PIVOTS.bottomCrown.y);
+        ctx.rotate(bottomCrownAngle);
+        ctx.translate(-MAGIKARP_PIVOTS.bottomCrown.x, -MAGIKARP_PIVOTS.bottomCrown.y);
+        renderList(parts.bottomCrown);
+        ctx.restore();
+
+        // 4. Main Torso, Head, Eyes & Lips
+        renderList(parts.body);
+
+        // 5. Dorsal Crown (top crown, sways gently on back)
+        const crownAngle = Math.sin(this.tailWave * 0.9 + 1.5) * 0.06;
+        ctx.save();
+        ctx.translate(MAGIKARP_PIVOTS.crown.x, MAGIKARP_PIVOTS.crown.y);
+        ctx.rotate(crownAngle);
+        ctx.translate(-MAGIKARP_PIVOTS.crown.x, -MAGIKARP_PIVOTS.crown.y);
+        renderList(parts.crown);
+        ctx.restore();
+
+        // 5. Pectoral Fin (fans rhythmically)
+        const finFan = Math.sin(this.tailWave * 0.65) * 0.14;
+        ctx.save();
+        ctx.translate(MAGIKARP_PIVOTS.pectoral.x, MAGIKARP_PIVOTS.pectoral.y);
+        ctx.rotate(finFan);
+        ctx.translate(-MAGIKARP_PIVOTS.pectoral.x, -MAGIKARP_PIVOTS.pectoral.y);
+        renderList(parts.pectoral);
+        ctx.restore();
+
+        // 6. Main Long Whisker (near side, in front of body, undulating!)
+        const w2Angle = Math.sin(this.tailWave * 0.75 + 1.2) * 0.22 + (this.speed * 0.06);
+        ctx.save();
+        ctx.translate(MAGIKARP_PIVOTS.mainWhisker.x, MAGIKARP_PIVOTS.mainWhisker.y);
+        ctx.rotate(w2Angle);
+        ctx.translate(-MAGIKARP_PIVOTS.mainWhisker.x, -MAGIKARP_PIVOTS.mainWhisker.y);
+        renderList(parts.mainWhisker);
+        ctx.restore();
+
+        // 7. Shiny Gold ★ Orbiting Stars
+        if (this.patternName === "Shiny Gold ★") {
+          const starTime = Date.now() * 0.003;
+          for (let s = 0; s < 3; s++) {
+            const ang = starTime + (s * Math.PI * 2 / 3);
+            const sx = 130 + Math.cos(ang) * 90;
+            const sy = 140 + Math.sin(ang) * 60;
+            ctx.fillStyle = "#fef08a";
+            ctx.beginPath();
+            ctx.arc(sx, sy, 5, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+
+        ctx.restore();
+      }
+    }
+    // =========================================================================
+    // Simulation Engine Setup
+    // =========================================================================
+    const canvas = document.getElementById('aquarium');
+    const ctx = canvas.getContext('2d');
+
+    let w = window.innerWidth;
+    let h = window.innerHeight;
+    let dpr = window.devicePixelRatio || 1;
+
+    let algaeGrid = new AlgaeGrid(w, h, 38);
+
+    // Small, pre-rendered caustics tile. Scrolling this texture is vastly cheaper
+    // than synthesising every output pixel on the main thread each frame.
+    const causticsCanvas = document.createElement('canvas');
+    const causticsCtx = causticsCanvas.getContext('2d');
+    let causticsPattern = null;
+
+    function buildCausticsTexture() {
+      const cw = causticsCanvas.width;
+      const ch = causticsCanvas.height;
+      causticsCtx.clearRect(0, 0, cw, ch);
+      causticsCtx.globalCompositeOperation = 'lighter';
+      for (let i = 0; i < 42; i++) {
+        const x = rand(0, cw);
+        const y = rand(0, ch);
+        const rx = rand(14, 42);
+        const ry = rand(4, 14);
+        causticsCtx.save();
+        causticsCtx.translate(x, y);
+        causticsCtx.rotate(rand(-0.85, 0.85));
+        causticsCtx.scale(1, ry / rx);
+        const grad = causticsCtx.createRadialGradient(0, 0, 0, 0, 0, rx);
+        grad.addColorStop(0, 'rgba(170, 235, 255, 0.42)');
+        grad.addColorStop(0.38, 'rgba(125, 215, 245, 0.16)');
+        grad.addColorStop(1, 'rgba(90, 190, 225, 0)');
+        causticsCtx.fillStyle = grad;
+        causticsCtx.beginPath();
+        causticsCtx.arc(0, 0, rx, 0, Math.PI * 2);
+        causticsCtx.fill();
+        causticsCtx.restore();
+      }
+      causticsCtx.globalCompositeOperation = 'source-over';
+      causticsPattern = ctx.createPattern(causticsCanvas, 'repeat');
+    }
+
+    function resize() {
+      dpr = Math.min(window.devicePixelRatio || 1, 1.25);
+      w = window.innerWidth;
+      h = window.innerHeight;
+      canvas.width = Math.floor(w * dpr);
+      canvas.height = Math.floor(h * dpr);
+      canvas.style.width = w + 'px';
+      canvas.style.height = h + 'px';
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      algaeGrid.resize(w, h);
+
+      causticsCanvas.width = Math.max(160, Math.floor(w * 0.28));
+      causticsCanvas.height = Math.max(100, Math.floor(h * 0.28));
+      buildCausticsTexture();
+      rebuildFlowField(performance.now() * 0.001);
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    // =========================================================================
+    // Carrying Capacity Setup: Ecosystem Naturally Stabilizes Around ~5 Fish
+    // =========================================================================
+    const TARGET_CARRYING_CAPACITY = 5;
+    const PLANT_COUNT = 6; // 6 plants x 2 buds = 12 buds, balances ~5 fish carrying capacity
+
+    let plants = [];
+    function initPlants() {
+      plants = [];
+      const spacing = (w - 140) / (PLANT_COUNT - 1);
+      for (let i = 0; i < PLANT_COUNT; i++) {
+        const pX = 70 + i * spacing + rand(-18, 18);
+        const type = i % 2;
+        plants.push(new Plant(pX, type));
+      }
+    }
+    initPlants();
+
+    let marineSnow = [];
+    for (let i = 0; i < 28; i++) {
+      marineSnow.push(new MarineSnowParticle(w, h));
+    }
+
+    // Start with 3 healthy Magikarp
+    let fishes = [
+      new Magikarp(w, h, w * 0.35, h * 0.45, null, 1, null, 1.6, 900),
+      new Magikarp(w, h, w * 0.55, h * 0.50, null, 1, null, 1.5, 850),
+      new Magikarp(w, h, w * 0.70, h * 0.38, null, 1, null, 1.5, 780)
+    ];
+
+    let nutrients = [];
+    let fxParticles = [];
+    let ripples = [];
+
+    // =========================================================================
+    // Session State Mode Configuration
+    // Set to 'new' to start fresh from zero every session (no past saves/cookies/files loaded).
+    // Set to 'save' to load and persist champion models across sessions.
+    // =========================================================================
+    const SESSION_MODE = 'new'; // Options: 'new' | 'save'
+    const isSaveMode = SESSION_MODE === 'save' || SESSION_MODE === true;
+
+    // Champion Lineage Persistence & API Sync
+    // =========================================================================
+    const CHAMPION_STORAGE_KEY = 'fishsaver_champion_lineage';
+    const API_URL = '/api/highest-fish';
+    const LOCAL_API_URL = 'http://localhost:3000/api/highest-fish';
+
+    const DEFAULT_CHAMPION = {
+      gen: 1,
+      w1: [
+        [0.12, -0.45, 0.88, -0.21, 0.34, -0.67],
+        [-0.54, 0.76, -0.11, 0.93, -0.42, 0.15],
+        [0.31, -0.82, 0.44, -0.19, 0.65, -0.38],
+        [-0.73, 0.28, -0.91, 0.52, -0.14, 0.83],
+        [0.45, -0.36, 0.27, -0.78, 0.59, -0.05],
+        [-0.18, 0.62, -0.35, 0.41, -0.84, 0.29]
+      ],
+      w2: [
+        [0.42, -0.58, 0.71, -0.33, 0.64, -0.19, 0.55],
+        [-0.27, 0.83, -0.46, 0.39, -0.72, 0.18, 0.61]
+      ],
+      b1: 0.65,
+      b2: 0.72,
+      b3: 0.48,
+      b4: 0.55,
+      savedAt: 'Initial Seed'
+    };
+
+    function loadChampionLocal() {
+      if (!isSaveMode) return null;
+      try {
+        if (typeof localStorage === 'undefined') return null;
+        const raw = localStorage.getItem(CHAMPION_STORAGE_KEY);
+        if (!raw) return null;
+        const data = JSON.parse(raw);
+        if (!data || !data.w1 || !data.w2) return null;
+        return data;
+      } catch (err) {
+        return null;
+      }
+    }
+
+    let savedHighestFish = (isSaveMode ? loadChampionLocal() : null) || JSON.parse(JSON.stringify(DEFAULT_CHAMPION));
+    let sessionMaxGen = 1;
+    let sessionReachedGen5 = false;
+
+    function updateSpawnButtonText() {
+      const span = document.getElementById('spawn-btn-gen');
+      if (span && savedHighestFish) {
+        span.textContent = 'Gen ' + (savedHighestFish.gen || 1);
+      }
+    }
+
+    async function syncChampionFromFile() {
+      if (!isSaveMode) return;
+      if (typeof fetch === 'undefined') return;
+      const endpoints = [API_URL, LOCAL_API_URL];
+      for (const url of endpoints) {
+        try {
+          const res = await fetch(url);
+          if (res.ok) {
+            const data = await res.json();
+            if (data && data.gen && data.w1 && data.w2) {
+              if (!savedHighestFish || data.gen >= savedHighestFish.gen) {
+                savedHighestFish = data;
+                try {
+                  if (typeof localStorage !== 'undefined') {
+                    localStorage.setItem(CHAMPION_STORAGE_KEY, JSON.stringify(data));
+                  }
+                } catch (_) { }
+                updateSpawnButtonText();
+              }
+              return;
+            }
+          }
+        } catch (_) { }
+      }
+    }
+    if (isSaveMode) {
+      syncChampionFromFile();
+    }
+
+    async function saveChampionFish(fish) {
+      try {
+        if (!fish) return;
+        const championData = {
+          gen: fish.gen,
+          w1: fish.brain.w1,
+          w2: fish.brain.w2,
+          b1: fish.b1,
+          b2: fish.b2,
+          b3: fish.b3,
+          b4: fish.b4,
+          savedAt: new Date().toISOString()
+        };
+        // Always track the session champion in memory
+        savedHighestFish = championData;
+        updateSpawnButtonText();
+
+        // In 'new' mode, state is strictly per-session in-memory and never written to disk or storage
+        if (!isSaveMode) return;
+
+        try {
+          if (typeof localStorage !== 'undefined') {
+            localStorage.setItem(CHAMPION_STORAGE_KEY, JSON.stringify(championData));
+          }
+        } catch (_) { }
+
+        if (typeof fetch !== 'undefined') {
+          const endpoints = [API_URL, LOCAL_API_URL];
+          for (const url of endpoints) {
+            try {
+              const res = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(championData)
+              });
+              if (res.ok) break;
+            } catch (_) { }
+          }
+        }
+      } catch (err) { }
+    }
+
+    function spawnHighestGenFish() {
+      // Free spawning: the tank's natural food scarcity will balance the carrying capacity around 5!
+      if (fishes.length >= 40) return; // Technical ceiling to prevent memory issues
+      const champ = savedHighestFish || loadChampionLocal() || DEFAULT_CHAMPION;
+      const brain = new Brain(champ.w1, champ.w2);
+      const traits = { b1: champ.b1, b2: champ.b2, b3: champ.b3, b4: champ.b4 };
+      const sX = rand(90, Math.max(120, w - 90));
+      const sY = rand(90, Math.max(120, h - 120));
+      const fish = new Magikarp(w, h, sX, sY, brain, champ.gen, traits, 1.6, 900);
+      fishes.push(fish);
+
+      for (let p = 0; p < 12; p++) {
+        const ang = (Math.PI * 2 * p) / 12;
+        fxParticles.push(new FXParticle(
+          sX, sY, 'rgba(251, 191, 36, ALPHA)',
+          Math.cos(ang) * 2.0, Math.sin(ang) * 2.0, 30, 2.2
+        ));
+      }
+      soundEngine.playBubble(sX / w, 680);
+    }
+
+    const btnSpawnChampion = document.getElementById('btn-spawn-champion');
+    if (btnSpawnChampion) {
+      btnSpawnChampion.addEventListener('click', spawnHighestGenFish);
+    }
+    updateSpawnButtonText();
+
+    // Soft Fascination Inactivity Auto-Hiding HUD
+    const hudOverlay = document.getElementById('hud-overlay');
+    const bottomHint = document.getElementById('bottom-hint');
+    let idleTimeout = null;
+    let isIdle = false;
+
+    function resetIdleTimer() {
+      isIdle = false;
+      if (hudOverlay) hudOverlay.classList.remove('idle-hidden');
+      if (bottomHint) bottomHint.classList.remove('idle-hidden');
+      clearTimeout(idleTimeout);
+      idleTimeout = setTimeout(() => {
+        isIdle = true;
+        if (hudOverlay) hudOverlay.classList.add('idle-hidden');
+        if (bottomHint) bottomHint.classList.add('idle-hidden');
+      }, 3600);
+    }
+    window.addEventListener('mousemove', resetIdleTimer);
+    window.addEventListener('mousedown', resetIdleTimer);
+    window.addEventListener('pointerdown', resetIdleTimer);
+    window.addEventListener('touchstart', resetIdleTimer);
+    resetIdleTimer();
+
+    // Interactive PointerDown Water Ripples (Instant response on Lively Wallpaper & desktop click)
+    let lastInteractionTime = 0;
+    function handleWaterInteraction(e) {
+      const now = performance.now();
+      if (now - lastInteractionTime < 60) return;
+      lastInteractionTime = now;
+      resetIdleTimer();
+
+      const rect = canvas.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const clickY = e.clientY - rect.top;
+
+      ripples.push(new WaterRipple(clickX, clickY));
+      soundEngine.playBubble(clickX / w, 520);
+
+      for (let f of fishes) {
+        const d = Math.hypot(f.x - clickX, f.y - clickY);
+        if (d < 160) {
+          f.triggerCStart(clickX, clickY);
+        }
+      }
+    }
+
+    canvas.addEventListener('pointerdown', handleWaterInteraction);
+    if (!window.PointerEvent) {
+      canvas.addEventListener('mousedown', handleWaterInteraction);
+      canvas.addEventListener('touchstart', (e) => {
+        if (e.touches && e.touches.length > 0) handleWaterInteraction(e.touches[0]);
+      });
+    }
+
+    // Ambient Audio Toggle Button
+    const btnAudio = document.getElementById('btn-audio');
+    const audioIcon = document.getElementById('audio-icon');
+    const audioLabel = document.getElementById('audio-label');
+    if (btnAudio) {
+      btnAudio.addEventListener('click', () => {
+        const isNowOn = soundEngine.toggle();
+        if (isNowOn) {
+          btnAudio.classList.add('active');
+          audioIcon.textContent = '🔊';
+          audioLabel.textContent = 'Audio Active';
+        } else {
+          btnAudio.classList.remove('active');
+          audioIcon.textContent = '🔈';
+          audioLabel.textContent = 'Ambient Audio';
+        }
+      });
+    }
+
+    // Telemetry Elements
+    const metricPop = document.getElementById('metric-pop');
+    const metricGen = document.getElementById('metric-gen');
+    const metricFps = document.getElementById('metric-fps');
+    const metricBiomassPct = document.getElementById('metric-biomass-pct');
+    const metricBiomassBar = document.getElementById('metric-biomass-bar');
+    const metricAlgaePct = document.getElementById('metric-algae-pct');
+    const metricAlgaeBar = document.getElementById('metric-algae-bar');
+    const ecoStatus = document.getElementById('eco-status');
+
+    let isTabActive = true;
+    let lastTime = performance.now();
+    document.addEventListener('visibilitychange', () => {
+      isTabActive = !document.hidden;
+      if (isTabActive) {
+        lastTime = performance.now();
+        requestAnimationFrame(render);
+      }
+    });
+
+    // =========================================================================
+    // Simulation Step: Physics, Ethology & Scarcity Economics
+    // =========================================================================
+    let tickCount = 0;
+    let cachedCandidates = [];
+    let lastCandidateTick = -100;
+
+    function updateSimulationStep(timeSec) {
+      tickCount++;
+
+      algaeGrid.update(tickCount);
+
+      for (let p of plants) {
+        p.update(timeSec, h);
+      }
+
+      for (let m of marineSnow) {
+        m.update(w, h, timeSec);
+      }
+
+      spatialGrid.clear();
+      for (let f of fishes) {
+        spatialGrid.insert(f);
+      }
+
+      // Food sources are biological state, not frame-rate state. Rebuild only
+      // twice per second at the normal 30 Hz simulation rate.
+      if (tickCount - lastCandidateTick >= 15) {
+        lastCandidateTick = tickCount;
+        cachedCandidates = [];
+
+        for (let p of plants) {
+          for (let i = 0; i < p.buds.length; i++) {
+            if (p.buds[i].ready) {
+              cachedCandidates.push({
+                isPlant: true,
+                plant: p,
+                budIndex: i,
+                x: p.buds[i].x,
+                y: p.buds[i].y
+              });
+            }
+          }
+        }
+
+        for (let r = 2; r < algaeGrid.rows - 2; r += 3) {
+          const rowOffset = r * algaeGrid.cols;
+          for (let c = 2; c < algaeGrid.cols - 2; c += 3) {
+            if (algaeGrid.grid[rowOffset + c] > 0.16) {
+              cachedCandidates.push({
+                isPlant: false,
+                x: (c + 0.5) * algaeGrid.cellSize,
+                y: (r + 0.5) * algaeGrid.cellSize
+              });
+            }
+          }
+        }
+      }
+
+      if (tickCount % 260 === 0 && Math.random() < 0.40) {
+        nutrients.push(new Nutrient(rand(50, w - 50), 10, w, h));
+      }
+
+      for (let nIdx = nutrients.length - 1; nIdx >= 0; nIdx--) {
+        const nut = nutrients[nIdx];
+        const reachedBottom = nut.update(h);
+        let consumed = false;
+        for (let p of plants) {
+          if (Math.abs(p.x - nut.x) < 32 && nut.y > h - p.maxHeight * p.biomass) {
+            p.fertilize(0.18);
+            consumed = true;
+            break;
+          }
+        }
+        if (consumed || reachedBottom) {
+          nutrients.splice(nIdx, 1);
+        }
+      }
+
+      // Update Magikarp
+      for (let i = fishes.length - 1; i >= 0; i--) {
+        const f = fishes[i];
+        const outcome = f.update(cachedCandidates, algaeGrid, marineSnow, w, h, timeSec);
+
+        if (outcome.grazed) {
+          lastCandidateTick = -100;
+          if (fxParticles.length < 20) {
+            const pColor = outcome.isPlant ? 'rgba(52, 211, 153, ALPHA)' : 'rgba(94, 234, 212, ALPHA)';
+            fxParticles.push(new FXParticle(
+              outcome.x, outcome.y, pColor,
+              rand(-0.6, 0.6), rand(-0.8, 0.2), 22, 1.6
+            ));
+          }
+        }
+
+        // Reproduction Requirements
+        const minMaturityAge = 1000;
+        const reproCooldown = 1200;
+        const isMature = f.age >= minMaturityAge;
+        const cooldownElapsed = (f.age - f.lastReproAge) >= reproCooldown;
+        const reproThreshold = 1.65;
+        const reproCost = 0.65;
+
+        if (isMature && cooldownElapsed && f.energy >= reproThreshold && fishes.length < 35) {
+          f.energy -= reproCost;
+          f.lastReproAge = f.age;
+          const childGen = f.gen + 1;
+          if (childGen > sessionMaxGen) sessionMaxGen = childGen;
+
+          const child = new Magikarp(
+            w, h,
+            f.x + rand(-18, 18),
+            f.y + rand(-18, 18),
+            f.brain.mutate(0.12, 0.22),
+            childGen,
+            { b1: f.b1, b2: f.b2, b3: f.b3, b4: f.b4 },
+            reproCost * 0.85,
+            0
+          );
+          fishes.push(child);
+
+          if (childGen >= 5) {
+            if (!sessionReachedGen5) {
+              sessionReachedGen5 = true;
+              saveChampionFish(child);
+            } else if (!savedHighestFish || childGen >= savedHighestFish.gen) {
+              saveChampionFish(child);
+            }
+          }
+
+          for (let p = 0; p < 8; p++) {
+            const ang = (Math.PI * 2 * p) / 8;
+            fxParticles.push(new FXParticle(
+              f.x, f.y, 'rgba(251, 191, 36, ALPHA)',
+              Math.cos(ang) * 1.5, Math.sin(ang) * 1.5, 25, 2.0
+            ));
+          }
+        }
+
+        // Starvation death
+        if (f.energy <= 0) {
+          fishes.splice(i, 1);
+        }
+      }
+
+      // Preserve session pioneer
+      if (fishes.length === 0) {
+        fishes.push(new Magikarp(w, h, undefined, undefined, null, 1, null, 1.5, 900));
+      }
+    }
+
+    // =========================================================================
+    // Procedural Optical Caustics Generator (pre-rendered texture, GPU-composited)
+    // =========================================================================
+    function drawCaustics(timeSec) {
+      if (!causticsPattern) return;
+      const cw = causticsCanvas.width;
+      const ch = causticsCanvas.height;
+      ctx.save();
+      ctx.globalCompositeOperation = 'screen';
+      ctx.globalAlpha = 0.09;
+      ctx.translate((timeSec * 9) % cw, (timeSec * 4) % ch);
+      ctx.fillStyle = causticsPattern;
+      ctx.fillRect(-cw, -ch, w + cw * 2, h + ch * 2);
+      ctx.globalAlpha = 0.045;
+      ctx.translate((-timeSec * 15) % cw, (timeSec * 7) % ch);
+      ctx.fillRect(-cw, -ch, w + cw * 2, h + ch * 2);
+      ctx.restore();
+    }
+
+    // =========================================================================
+    // Main Restorative Render Loop
+    // =========================================================================
+    let frameCount = 0;
+    let fps = 60;
+    let lastRenderTime = 0;
+    let nextTelemetryTime = 0;
+    let isWindowFocused = document.hasFocus();
+
+    window.addEventListener('focus', () => { isWindowFocused = true; });
+    window.addEventListener('blur', () => { isWindowFocused = false; });
+
+    function targetFrameMs() {
+      // When actively interacted with, run at 24 FPS (even behind active apps in Lively Wallpaper).
+      // Drops to 10 FPS when idle to preserve CPU and battery.
+      return isIdle ? 1000 / 10 : 1000 / 500;
+    }
+
+    function render(now) {
+      if (!isTabActive) return;
+
+      if (now - lastRenderTime < targetFrameMs()) {
+        requestAnimationFrame(render);
+        return;
+      }
+      lastRenderTime = now;
+
+      const delta = now - lastTime;
+      lastTime = now;
+      const timeSec = now * 0.001;
+      fps = Math.round(1000 / Math.max(1, delta));
+
+      updateSimulationStep(timeSec);
+
+      for (let i = fxParticles.length - 1; i >= 0; i--) {
+        const p = fxParticles[i];
+        p.update();
+        if (p.life <= 0) fxParticles.splice(i, 1);
+      }
+      for (let i = ripples.length - 1; i >= 0; i--) {
+        if (ripples[i].update()) ripples.splice(i, 1);
+      }
+
+      // 1. Beer-Lambert Optical Depth Stratification Gradient
+      const bgGrad = ctx.createLinearGradient(0, 0, 0, h);
+      bgGrad.addColorStop(0.00, '#0a2e3b');
+      bgGrad.addColorStop(0.35, '#071d28');
+      bgGrad.addColorStop(0.70, '#05131d');
+      bgGrad.addColorStop(1.00, '#03080e');
+      ctx.fillStyle = bgGrad;
+      ctx.fillRect(0, 0, w, h);
+
+      // 2. Procedural Water Caustics Shimmer
+      drawCaustics(timeSec);
+
+      // 3. Subtle Ambient Kelp Silhouettes
+      ctx.strokeStyle = '#05141e';
+      ctx.lineWidth = 2.5;
+      for (let x = 60; x < w; x += 220) {
+        ctx.beginPath();
+        ctx.moveTo(x, h);
+        const curl = getCurlNoise(x, h * 0.5, timeSec);
+        const sway = Math.sin(timeSec * 0.7 + x) * 18 + curl.u * 12;
+        ctx.quadraticCurveTo(x - sway, h * 0.55, x + sway, h * 0.12);
+        ctx.stroke();
+      }
+
+      // 4. Benthic Seabed Substrate
+      ctx.fillStyle = '#020508';
+      ctx.beginPath();
+      ctx.moveTo(0, h);
+      ctx.lineTo(0, h - 12);
+      for (let x = 0; x <= w; x += 90) {
+        const wave = Math.sin(x * 0.015) * 4;
+        ctx.lineTo(x, h - 12 + wave);
+      }
+      ctx.lineTo(w, h);
+      ctx.closePath();
+      ctx.fill();
+
+      // 5. Living Flexible Benthic Flora
+      for (let p of plants) {
+        p.draw(ctx, h);
+      }
+
+      // 6. Suspended Marine Snow
+      for (let m of marineSnow) {
+        m.draw(ctx, timeSec);
+      }
+
+      // 7. Rare Nutrients & Visual Particles
+      for (let n of nutrients) {
+        n.draw(ctx);
+      }
+      for (let p of fxParticles) {
+        p.draw(ctx);
+      }
+
+      // 8. Water Click Ripples
+      for (let r of ripples) {
+        r.draw(ctx);
+      }
+
+      // 9. Magikarp Organisms
+      for (let f of fishes) {
+        f.draw(ctx);
+      }
+
+      // 10. Translucent Glass Biofilm Layer
+      algaeGrid.draw(ctx);
+
+      // Telemetry HUD Metrics
+      frameCount++;
+      if (now >= nextTelemetryTime) {
+        nextTelemetryTime = now + 1000;
+        metricPop.textContent = fishes.length;
+        metricGen.textContent = 'Gen ' + sessionMaxGen;
+        metricFps.textContent = fps;
+
+        const avgBiomass = plants.length > 0
+          ? plants.reduce((a, b) => a + b.biomass, 0) / plants.length
+          : 0;
+        const biomassPct = Math.round(avgBiomass * 100);
+        metricBiomassPct.textContent = biomassPct + '%';
+        metricBiomassBar.style.width = biomassPct + '%';
+
+        const algaePct = algaeGrid.getCoveragePct();
+        metricAlgaePct.textContent = algaePct + '%';
+        metricAlgaeBar.style.width = algaePct + '%';
+
+        if (biomassPct < 35) {
+          ecoStatus.textContent = 'Scarce Forage';
+          ecoStatus.className = 'status-badge status-sparse';
+        } else if (biomassPct > 70) {
+          ecoStatus.textContent = 'Lush Serenity';
+          ecoStatus.className = 'status-badge status-balanced';
+        } else {
+          ecoStatus.textContent = 'Serene Balance';
+          ecoStatus.className = 'status-badge status-balanced';
+        }
+      }
+
+      requestAnimationFrame(render);
+    }
+
+    requestAnimationFrame(render);
+  </script>
+</body>
+
+</html>
